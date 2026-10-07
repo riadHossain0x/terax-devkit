@@ -128,7 +128,24 @@ fn resolve_root(path: &str, markers: &[String]) -> Option<String> {
         if home.as_deref() == Some(dir) {
             return None;
         }
-        if markers.iter().any(|m| dir.join(m).exists()) {
+        let matched = markers.iter().any(|m| {
+            if m.starts_with("*.") {
+                let ext = &m[1..];
+                if let Ok(entries) = std::fs::read_dir(dir) {
+                    entries.filter_map(Result::ok).any(|e| {
+                        e.file_name()
+                            .to_str()
+                            .map(|name| name.ends_with(ext))
+                            .unwrap_or(false)
+                    })
+                } else {
+                    false
+                }
+            } else {
+                dir.join(m).exists()
+            }
+        });
+        if matched {
             return Some(dir.to_string_lossy().into_owned());
         }
         dir = dir.parent()?;
@@ -205,5 +222,21 @@ mod tests {
             &["nonexistent-marker-xyz".to_string()],
         );
         assert_eq!(found, None);
+    }
+
+    #[test]
+    fn resolve_root_matches_wildcard_marker() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let root = tmp.path().join("csharp_proj");
+        let nested = root.join("src");
+        std::fs::create_dir_all(&nested).unwrap();
+        std::fs::write(root.join("App.sln"), "").unwrap();
+        std::fs::write(nested.join("Program.cs"), "").unwrap();
+
+        let found = resolve_root(
+            nested.join("Program.cs").to_str().unwrap(),
+            &["*.sln".to_string(), "*.csproj".to_string()],
+        );
+        assert_eq!(found, Some(root.to_string_lossy().into_owned()));
     }
 }

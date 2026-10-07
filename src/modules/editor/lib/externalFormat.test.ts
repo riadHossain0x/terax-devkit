@@ -16,6 +16,8 @@ describe("resolveFormatter", () => {
     expect(resolveFormatter("py", prefs("biome"))).toBe("lsp");
     expect(resolveFormatter("rs", prefs("prettier"))).toBe("lsp");
     expect(resolveFormatter("svelte", prefs("prettier"))).toBe("prettier");
+    expect(resolveFormatter("cs", prefs("dotnet-format"))).toBe("dotnet-format");
+    expect(resolveFormatter("ts", prefs("dotnet-format"))).toBe("lsp");
   });
 
   it("lsp and custom globals always apply", () => {

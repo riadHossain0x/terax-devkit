@@ -64,6 +64,11 @@ export const FORMATTERS: Record<
   },
   shfmt: { label: "shfmt", command: "shfmt -w", langs: ["sh", "bash", "zsh"] },
   zigfmt: { label: "zig fmt", command: "zig fmt", langs: ["zig"] },
+  "dotnet-format": {
+    label: "dotnet format",
+    command: "dotnet format --include",
+    langs: ["cs"],
+  },
 };
 
 export const FORMATTER_LABELS: Record<EditorFormatter, string> = {

@@ -61,6 +61,7 @@ import {
   SidebarRail,
   useSidebarPanel,
 } from "@/modules/sidebar";
+import { SolutionExplorer } from "@/modules/dotnet";
 import {
   SourceControlPanel,
   useRepositoryTargeting,
@@ -646,6 +647,29 @@ export default function App() {
       term.focus();
     },
     [activeLeafId],
+  );
+
+  const runTerminalCommand = useCallback(
+    (cmd: string) => {
+      if (activeLeafId !== null) {
+        const term = terminalRefs.current.get(activeLeafId);
+        if (term) {
+          term.write(`${cmd}\r`);
+          term.focus();
+          return;
+        }
+      }
+      const tabId = newTab(inheritedCwdForNewTab());
+      setTimeout(() => {
+        const tab = tabsRef.current.find((x) => x.id === tabId);
+        if (!tab || tab.kind !== "terminal") return;
+        const t = terminalRefs.current.get(tab.activeLeafId);
+        if (!t) return;
+        t.write(`${cmd}\r`);
+        t.focus();
+      }, 100);
+    },
+    [activeLeafId, newTab, inheritedCwdForNewTab],
   );
 
   const cdInNewTab = useCallback(
@@ -1270,6 +1294,7 @@ export default function App() {
             openSpacesOverview: () => setSwitcherOpen(true),
             newSpace: () => void handleNewSpace(),
             switchSpace: (id) => useSpaces.getState().setActive(id),
+            runDotnetCommand: runTerminalCommand,
           })
         : [],
     [
@@ -1462,6 +1487,12 @@ export default function App() {
                           onOpenGitHistory={handleOpenGitHistoryForPath}
                           onAttachToAgent={handleAttachFileToAgent}
                           pathDropTarget={terminalPathDropTarget}
+                        />
+                      ) : sidebarView === "solution" ? (
+                        <SolutionExplorer
+                          workspaceRoot={explorerRoot ?? launchCwd}
+                          onRunCommand={runTerminalCommand}
+                          onOpenFile={(p) => handleOpenFile(p, true)}
                         />
                       ) : (
                         <SourceControlPanel

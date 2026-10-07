@@ -33,6 +33,12 @@ describe("serversForLanguage", () => {
     ]);
   });
 
+  it("returns csharp-ls for cs language", () => {
+    expect(serversForLanguage("cs", []).map((p) => p.id)).toEqual([
+      "csharp-ls",
+    ]);
+  });
+
   it("returns nothing for a null or unknown language", () => {
     expect(serversForLanguage(null, [])).toEqual([]);
     expect(serversForLanguage("cobol", [])).toEqual([]);

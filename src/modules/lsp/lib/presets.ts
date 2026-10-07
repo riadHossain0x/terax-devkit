@@ -264,6 +264,25 @@ export const LSP_PRESETS: LspPreset[] = [
       docsUrl: "https://github.com/swiftlang/sourcekit-lsp",
     },
   },
+  {
+    id: "csharp-ls",
+    name: "C#",
+    command: "csharp-ls",
+    args: [],
+    languages: { cs: "csharp" },
+    rootMarkers: [
+      "*.sln",
+      "*.slnx",
+      "*.csproj",
+      "global.json",
+      "Directory.Build.props",
+      ".git",
+    ],
+    install: {
+      command: "dotnet tool install -g csharp-ls",
+      docsUrl: "https://github.com/razzmatazz/csharp-ls",
+    },
+  },
 ];
 
 function fromCustom(server: LspCustomServer): LspPreset {

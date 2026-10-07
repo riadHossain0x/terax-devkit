@@ -101,4 +101,19 @@ describe("createCommandItems", () => {
     );
     expect(reason).toBe("Current space");
   });
+
+  it("creates and enables .NET command items when runner is provided", () => {
+    let executed = "";
+    const ctx = baseContext({
+      runDotnetCommand: (cmd) => {
+        executed = cmd;
+      },
+    });
+    const items = createCommandItems(ctx);
+    const buildItem = items.find((i) => i.id === "dotnet.build");
+    expect(buildItem).toBeDefined();
+    expect(buildItem?.disabledReason).toBeUndefined();
+    buildItem?.run();
+    expect(executed).toBe("dotnet build");
+  });
 });

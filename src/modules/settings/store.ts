@@ -197,6 +197,7 @@ export type EditorFormatter =
   | "clang-format"
   | "shfmt"
   | "zigfmt"
+  | "dotnet-format"
   | "custom";
 
 export type LspActivation = "enabled" | "dismissed";

@@ -19,6 +19,8 @@ import {
   SparklesIcon,
   TerminalIcon,
   ViewIcon,
+  Wrench01Icon,
+  PlayIcon,
 } from "@hugeicons/core-free-icons";
 import type { PaletteItem } from "./types";
 
@@ -27,6 +29,7 @@ export const COMMAND_GROUPS = [
   "Spaces",
   "Tabs",
   "Panes",
+  ".NET",
   "Git",
   "Search",
   "View",
@@ -62,6 +65,7 @@ export type CommandPaletteActionContext = {
   openSpacesOverview: () => void;
   newSpace: () => void;
   switchSpace: (id: string) => void;
+  runDotnetCommand?: (command: string) => void;
 };
 
 const noop = () => {};
@@ -210,6 +214,51 @@ export function createCommandItems(
       shortcutId: "pane.splitDown",
       disabledReason: splitDisabled,
       run: ctx.splitPaneDown,
+    },
+    {
+      id: "dotnet.build",
+      title: ".NET: Build Solution",
+      group: ".NET",
+      keywords: ["dotnet", "build", "compile", "c#", "csharp", "solution"],
+      icon: Wrench01Icon,
+      disabledReason: ctx.runDotnetCommand ? undefined : "Terminal unavailable",
+      run: () => ctx.runDotnetCommand?.("dotnet build"),
+    },
+    {
+      id: "dotnet.run",
+      title: ".NET: Run Project",
+      group: ".NET",
+      keywords: ["dotnet", "run", "start", "exec", "c#", "csharp"],
+      icon: PlayIcon,
+      disabledReason: ctx.runDotnetCommand ? undefined : "Terminal unavailable",
+      run: () => ctx.runDotnetCommand?.("dotnet run"),
+    },
+    {
+      id: "dotnet.test",
+      title: ".NET: Run All Tests",
+      group: ".NET",
+      keywords: ["dotnet", "test", "unit test", "xunit", "nunit", "c#"],
+      icon: PlayIcon,
+      disabledReason: ctx.runDotnetCommand ? undefined : "Terminal unavailable",
+      run: () => ctx.runDotnetCommand?.("dotnet test"),
+    },
+    {
+      id: "dotnet.watch",
+      title: ".NET: Watch & Hot Reload",
+      group: ".NET",
+      keywords: ["dotnet", "watch", "hot reload", "c#", "dev"],
+      icon: PlayIcon,
+      disabledReason: ctx.runDotnetCommand ? undefined : "Terminal unavailable",
+      run: () => ctx.runDotnetCommand?.("dotnet watch run"),
+    },
+    {
+      id: "dotnet.restore",
+      title: ".NET: Restore Dependencies",
+      group: ".NET",
+      keywords: ["dotnet", "restore", "nuget", "packages", "c#"],
+      icon: Wrench01Icon,
+      disabledReason: ctx.runDotnetCommand ? undefined : "Terminal unavailable",
+      run: () => ctx.runDotnetCommand?.("dotnet restore"),
     },
     {
       id: "git.graph",
