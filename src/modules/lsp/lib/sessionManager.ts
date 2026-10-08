@@ -381,6 +381,46 @@ export async function lspOpenDocumentSymbols(
   return openDocumentSymbols(view);
 }
 
+export async function lspGotoDefinition(
+  view: EditorView,
+): Promise<"done" | "unsupported"> {
+  if (sessions.size === 0) return "unsupported";
+  const { lspGotoDefinitionAtCursor } = await import("./client");
+  return lspGotoDefinitionAtCursor(view);
+}
+
+export async function lspGotoDeclaration(
+  view: EditorView,
+): Promise<"done" | "unsupported"> {
+  if (sessions.size === 0) return "unsupported";
+  const { lspGotoDeclarationAtCursor } = await import("./client");
+  return lspGotoDeclarationAtCursor(view);
+}
+
+export async function lspGotoImplementation(
+  view: EditorView,
+): Promise<"done" | "unsupported"> {
+  if (sessions.size === 0) return "unsupported";
+  const { lspGotoImplementationAtCursor } = await import("./client");
+  return lspGotoImplementationAtCursor(view);
+}
+
+export async function lspGotoTypeDefinition(
+  view: EditorView,
+): Promise<"done" | "unsupported"> {
+  if (sessions.size === 0) return "unsupported";
+  const { lspGotoTypeDefinitionAtCursor } = await import("./client");
+  return lspGotoTypeDefinitionAtCursor(view);
+}
+
+export async function lspFindReferences(
+  view: EditorView,
+): Promise<"done" | "unsupported"> {
+  if (sessions.size === 0) return "unsupported";
+  const { lspFindReferencesAtCursor } = await import("./client");
+  return lspFindReferencesAtCursor(view);
+}
+
 // Open docs re-acquire automatically via the generation bump, so a stop
 // while still enabled is a restart.
 export async function restartPresetSessions(presetId: string): Promise<void> {

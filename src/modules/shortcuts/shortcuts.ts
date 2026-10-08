@@ -52,6 +52,10 @@ export type ShortcutId =
   | "editor.aiComplete"
   | "editor.codeComplete"
   | "editor.gotoSymbol"
+  | "editor.gotoDefinition"
+  | "editor.gotoImplementation"
+  | "editor.gotoTypeDefinition"
+  | "editor.findReferences"
   | "debug.toggleBreakpoint"
   | "debug.startOrContinue"
   | "debug.stepOver"
@@ -401,6 +405,30 @@ export const SHORTCUTS: Shortcut[] = [
     label: "Go to symbol in file",
     group: "Editor",
     defaultBindings: [{ [MOD_PROP]: true, shift: true, key: "o" }],
+  },
+  {
+    id: "editor.gotoDefinition",
+    label: "Go to declaration or usages",
+    group: "Editor",
+    defaultBindings: [{ key: "F12" }],
+  },
+  {
+    id: "editor.gotoImplementation",
+    label: "Go to implementation",
+    group: "Editor",
+    defaultBindings: [{ [MOD_PROP]: true, key: "F12" }],
+  },
+  {
+    id: "editor.gotoTypeDefinition",
+    label: "Go to type definition",
+    group: "Editor",
+    defaultBindings: [{ [MOD_PROP]: true, shift: true, key: "b" }],
+  },
+  {
+    id: "editor.findReferences",
+    label: "Find usages",
+    group: "Editor",
+    defaultBindings: [{ shift: true, key: "F12" }],
   },
   {
     id: "debug.toggleBreakpoint",

@@ -1,7 +1,11 @@
 import { endpointIdFromCompatModel } from "@/modules/ai/config";
 import { getCustomEndpointKey, getKey } from "@/modules/ai/lib/keyring";
 import {
+  lspFindReferences,
   lspFormatDocument,
+  lspGotoDefinition,
+  lspGotoImplementation,
+  lspGotoTypeDefinition,
   lspOpenDocumentSymbols,
   useLspExtension,
 } from "@/modules/lsp";
@@ -23,7 +27,19 @@ import {
 } from "@codemirror/search";
 import { Prec, StateEffect } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
+import { renameSymbol } from "codemirror-languageserver";
 import { vim } from "@replit/codemirror-vim";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuShortcut,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import {
@@ -107,6 +123,18 @@ export type EditorPaneHandle = {
   triggerCodeComplete: () => void;
   /** Open symbols in file outline navigator. */
   gotoSymbol: () => Promise<void>;
+  /** Navigate to declaration/definition at cursor. */
+  gotoDefinition: () => Promise<void>;
+  /** Navigate to implementation at cursor. */
+  gotoImplementation: () => Promise<void>;
+  /** Navigate to type definition at cursor. */
+  gotoTypeDefinition: () => Promise<void>;
+  /** Find references / usages at cursor. */
+  findReferences: () => Promise<void>;
+  /** Format document with LSP or configured formatter. */
+  formatDocument: () => Promise<void>;
+  /** Rename symbol at cursor. */
+  renameSymbol: () => void;
 };
 
 type Props = {
@@ -642,9 +670,111 @@ export const EditorPane = memo(
             });
           }
         },
+        gotoDefinition: async () => {
+          const view = cmRef.current?.view;
+          if (!view) return;
+          const res = await lspGotoDefinition(view);
+          if (res === "unsupported") {
+            toast.info("No definition found", {
+              description: "Language server is not running or symbol has no definition.",
+            });
+          }
+        },
+        gotoImplementation: async () => {
+          const view = cmRef.current?.view;
+          if (!view) return;
+          const res = await lspGotoImplementation(view);
+          if (res === "unsupported") {
+            toast.info("No implementation found", {
+              description: "Language server does not provide implementations for this symbol.",
+            });
+          }
+        },
+        gotoTypeDefinition: async () => {
+          const view = cmRef.current?.view;
+          if (!view) return;
+          const res = await lspGotoTypeDefinition(view);
+          if (res === "unsupported") {
+            toast.info("No type definition found", {
+              description: "Language server does not provide type definitions for this symbol.",
+            });
+          }
+        },
+        findReferences: async () => {
+          const view = cmRef.current?.view;
+          if (!view) return;
+          const res = await lspFindReferences(view);
+          if (res === "unsupported") {
+            toast.info("No usages found", {
+              description: "Language server is not running or symbol has no references.",
+            });
+          }
+        },
+        formatDocument: async () => {
+          const view = cmRef.current?.view;
+          if (!view) return;
+          const res = await lspFormatDocument(view);
+          if (res === "unsupported") {
+            toast.info("Formatting unsupported", {
+              description: "Language server does not support formatting for this file.",
+            });
+          }
+        },
+        renameSymbol: () => {
+          const view = cmRef.current?.view;
+          if (view) renameSymbol(view);
+        },
       }),
       [path, applyPendingFocus, applyPendingGoto],
     );
+
+    const handleContextMenu = useCallback((e: React.MouseEvent) => {
+      const view = cmRef.current?.view;
+      if (!view) return;
+      // If there is no selection, move cursor to the right-clicked position
+      const { from, to } = view.state.selection.main;
+      if (from === to) {
+        const pos = view.posAtCoords({ x: e.clientX, y: e.clientY });
+        if (pos != null) {
+          view.dispatch({ selection: { anchor: pos } });
+        }
+      }
+    }, []);
+
+    const handleGotoDefinition = useCallback(() => {
+      const view = cmRef.current?.view;
+      if (view) void lspGotoDefinition(view);
+    }, []);
+
+    const handleGotoImplementation = useCallback(() => {
+      const view = cmRef.current?.view;
+      if (view) void lspGotoImplementation(view);
+    }, []);
+
+    const handleGotoTypeDefinition = useCallback(() => {
+      const view = cmRef.current?.view;
+      if (view) void lspGotoTypeDefinition(view);
+    }, []);
+
+    const handleFindReferences = useCallback(() => {
+      const view = cmRef.current?.view;
+      if (view) void lspFindReferences(view);
+    }, []);
+
+    const handleGotoSymbol = useCallback(() => {
+      const view = cmRef.current?.view;
+      if (view) void lspOpenDocumentSymbols(view);
+    }, []);
+
+    const handleFormat = useCallback(() => {
+      const view = cmRef.current?.view;
+      if (view) void lspFormatDocument(view);
+    }, []);
+
+    const handleRename = useCallback(() => {
+      const view = cmRef.current?.view;
+      if (view) renameSymbol(view);
+    }, []);
 
     if (doc.status === "loading") {
       return (
@@ -746,28 +876,72 @@ export const EditorPane = memo(
     }
 
     return (
-      <div className="flex h-full min-h-0 flex-col zoom-exempt">
-        <CodeMirror
-          ref={cmRef}
-          value={doc.content}
-          onChange={onChange}
-          theme={themeExt}
-          extensions={extensions}
-          height="100%"
-          className="terax-code-editor flex-1 min-h-0 overflow-hidden"
-          basicSetup={{
-            lineNumbers: true,
-            highlightActiveLineGutter: true,
-            foldGutter: true,
-            bracketMatching: true,
-            closeBrackets: true,
-            autocompletion: true,
-            highlightActiveLine: true,
-            highlightSelectionMatches: true,
-            searchKeymap: true,
-          }}
-        />
-      </div>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <div
+            className="flex h-full min-h-0 flex-col zoom-exempt"
+            onContextMenu={handleContextMenu}
+          >
+            <CodeMirror
+              ref={cmRef}
+              value={doc.content}
+              onChange={onChange}
+              theme={themeExt}
+              extensions={extensions}
+              height="100%"
+              className="terax-code-editor flex-1 min-h-0 overflow-hidden"
+              basicSetup={{
+                lineNumbers: true,
+                highlightActiveLineGutter: true,
+                foldGutter: true,
+                bracketMatching: true,
+                closeBrackets: true,
+                autocompletion: true,
+                highlightActiveLine: true,
+                highlightSelectionMatches: true,
+                searchKeymap: true,
+              }}
+            />
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent className="w-56">
+          <ContextMenuSub>
+            <ContextMenuSubTrigger>Go to</ContextMenuSubTrigger>
+            <ContextMenuSubContent className="w-56">
+              <ContextMenuItem onClick={handleGotoDefinition}>
+                <span>Declaration or Usages</span>
+                <ContextMenuShortcut>F12</ContextMenuShortcut>
+              </ContextMenuItem>
+              <ContextMenuItem onClick={handleGotoImplementation}>
+                <span>Implementation</span>
+                <ContextMenuShortcut>⌘F12</ContextMenuShortcut>
+              </ContextMenuItem>
+              <ContextMenuItem onClick={handleGotoTypeDefinition}>
+                <span>Type Definition</span>
+                <ContextMenuShortcut>⇧⌘B</ContextMenuShortcut>
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem onClick={handleGotoSymbol}>
+                <span>File Member / Symbol...</span>
+                <ContextMenuShortcut>⇧⌘O</ContextMenuShortcut>
+              </ContextMenuItem>
+            </ContextMenuSubContent>
+          </ContextMenuSub>
+          <ContextMenuItem onClick={handleFindReferences}>
+            <span>Find Usages</span>
+            <ContextMenuShortcut>⇧F12</ContextMenuShortcut>
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={handleRename}>
+            <span>Rename Symbol</span>
+            <ContextMenuShortcut>F2</ContextMenuShortcut>
+          </ContextMenuItem>
+          <ContextMenuItem onClick={handleFormat}>
+            <span>Format Document</span>
+            <ContextMenuShortcut>⇧⌥F</ContextMenuShortcut>
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
     );
   }),
 );

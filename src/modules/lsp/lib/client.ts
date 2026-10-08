@@ -32,6 +32,7 @@ import {
   type SymbolInformation,
 } from "./symbols";
 import { fileUriToPath } from "./uri";
+import { getLspNavigator } from "./navigator";
 
 import {
   languageServerWithTransport as baseLanguageServerWithTransport,
@@ -96,7 +97,7 @@ export function languageServerWithTransport(
 }
 
 export type LspPos = { line: number; character: number };
-type LspRange = { start: LspPos };
+type LspRange = { start: LspPos; end?: LspPos };
 
 type LspLocation = { uri: string; range: LspRange };
 type LspLocationLink = {
@@ -176,7 +177,7 @@ export async function openDocumentSymbols(
 ): Promise<"done" | "unsupported"> {
   const plugin = view.plugin(languageServerPlugin);
   if (!plugin) return "unsupported";
-  const client = plugin.client as TeraxLspClient;
+  const client = plugin.client as unknown as TeraxLspClient;
   if (!client.ready) return "unsupported";
 
   let result: (DocumentSymbol | SymbolInformation)[] | null;
@@ -213,6 +214,168 @@ export async function openDocumentSymbols(
     },
   });
   return "done";
+}
+
+function lspPositionAt(view: EditorView, pos: number) {
+  const line = view.state.doc.lineAt(pos);
+  return { line: line.number - 1, character: pos - line.from };
+}
+
+function lspNavigateTo(view: EditorView, documentUri: string, loc: LspLocation): void {
+  if (loc.uri === documentUri) {
+    const targetLine = Math.min(loc.range.start.line + 1, view.state.doc.lines);
+    const lineObj = view.state.doc.line(targetLine);
+    const target = Math.min(lineObj.from + loc.range.start.character, lineObj.to);
+    view.dispatch({
+      selection: { anchor: target },
+      effects: EditorView.scrollIntoView(target, { y: "center" }),
+    });
+    view.focus();
+  } else {
+    const target = fileUriToPath(loc.uri);
+    if (target) getLspNavigator()?.openFile(target, loc.range.start.line + 1);
+  }
+}
+
+function lspDisplayResults(
+  view: EditorView,
+  documentUri: string,
+  title: string,
+  locs: LspLocation[],
+): void {
+  if (locs.length === 0) {
+    toast.info(`No ${title.toLowerCase()} found`);
+    return;
+  }
+  if (locs.length === 1) {
+    lspNavigateTo(view, documentUri, locs[0]);
+    return;
+  }
+  const byLoc = new Map<string, LspLocation>();
+  for (const loc of locs) {
+    const path = fileUriToPath(loc.uri) ?? loc.uri;
+    const rel = path.split(/[\\/]/).pop() ?? path;
+    byLoc.set(`${rel}:${loc.range.start.line + 1}`, loc);
+  }
+  const items: LocationItem[] = [...byLoc.entries()]
+    .map(([text, loc]) => ({
+      uri: loc.uri,
+      line: loc.range.start.line,
+      character: loc.range.start.character,
+      label: text,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+  openLocationsPanel(view, {
+    title,
+    items,
+    onPick: (item) =>
+      lspNavigateTo(view, documentUri, {
+        uri: item.uri,
+        range: { start: { line: item.line, character: item.character } },
+      }),
+  });
+}
+
+export async function lspGotoDefinitionAtCursor(
+  view: EditorView,
+): Promise<"done" | "unsupported"> {
+  const plugin = view.plugin(languageServerPlugin);
+  if (!plugin) return "unsupported";
+  const client = plugin.client as unknown as TeraxLspClient;
+  if (!client.ready) return "unsupported";
+  const pos = view.state.selection.main.head;
+  try {
+    const result = await client.textDocumentDefinition({
+      textDocument: { uri: plugin.documentUri },
+      position: lspPositionAt(view, pos),
+    });
+    lspDisplayResults(view, plugin.documentUri, "Definitions", normalizeLocations(result));
+    return "done";
+  } catch {
+    return "unsupported";
+  }
+}
+
+export async function lspGotoDeclarationAtCursor(
+  view: EditorView,
+): Promise<"done" | "unsupported"> {
+  const plugin = view.plugin(languageServerPlugin);
+  if (!plugin) return "unsupported";
+  const client = plugin.client as unknown as TeraxLspClient;
+  if (!client.ready) return "unsupported";
+  const pos = view.state.selection.main.head;
+  try {
+    const result = await client.textDocumentDeclaration({
+      textDocument: { uri: plugin.documentUri },
+      position: lspPositionAt(view, pos),
+    });
+    lspDisplayResults(view, plugin.documentUri, "Declarations", normalizeLocations(result));
+    return "done";
+  } catch {
+    return "unsupported";
+  }
+}
+
+export async function lspGotoImplementationAtCursor(
+  view: EditorView,
+): Promise<"done" | "unsupported"> {
+  const plugin = view.plugin(languageServerPlugin);
+  if (!plugin) return "unsupported";
+  const client = plugin.client as unknown as TeraxLspClient;
+  if (!client.ready) return "unsupported";
+  const pos = view.state.selection.main.head;
+  try {
+    const result = await client.textDocumentImplementation({
+      textDocument: { uri: plugin.documentUri },
+      position: lspPositionAt(view, pos),
+    });
+    lspDisplayResults(view, plugin.documentUri, "Implementations", normalizeLocations(result));
+    return "done";
+  } catch {
+    return "unsupported";
+  }
+}
+
+export async function lspGotoTypeDefinitionAtCursor(
+  view: EditorView,
+): Promise<"done" | "unsupported"> {
+  const plugin = view.plugin(languageServerPlugin);
+  if (!plugin) return "unsupported";
+  const client = plugin.client as unknown as TeraxLspClient;
+  if (!client.ready) return "unsupported";
+  const pos = view.state.selection.main.head;
+  try {
+    const result = await client.textDocumentTypeDefinition({
+      textDocument: { uri: plugin.documentUri },
+      position: lspPositionAt(view, pos),
+    });
+    lspDisplayResults(view, plugin.documentUri, "Type Definitions", normalizeLocations(result));
+    return "done";
+  } catch {
+    return "unsupported";
+  }
+}
+
+export async function lspFindReferencesAtCursor(
+  view: EditorView,
+): Promise<"done" | "unsupported"> {
+  const plugin = view.plugin(languageServerPlugin);
+  if (!plugin) return "unsupported";
+  const client = plugin.client as unknown as TeraxLspClient;
+  if (!client.ready) return "unsupported";
+  const pos = view.state.selection.main.head;
+  try {
+    const result = await client.textDocumentReferences({
+      textDocument: { uri: plugin.documentUri },
+      position: lspPositionAt(view, pos),
+      context: { includeDeclaration: true },
+    });
+    lspDisplayResults(view, plugin.documentUri, "References", result ?? []);
+    return "done";
+  } catch {
+    return "unsupported";
+  }
 }
 
 function highlightBlock(el: HTMLElement, view: EditorView): void {
@@ -434,6 +597,38 @@ export function lspInteractions(opts: {
     showResults(view, "Definitions", normalizeLocations(result));
   };
 
+  const gotoImplementation = async (
+    view: EditorView,
+    pos: number,
+  ): Promise<void> => {
+    let result: DefinitionResult;
+    try {
+      result = await opts.client.textDocumentImplementation({
+        textDocument: { uri: opts.documentUri },
+        position: positionAt(view, pos),
+      });
+    } catch {
+      return;
+    }
+    showResults(view, "Implementations", normalizeLocations(result));
+  };
+
+  const gotoTypeDefinition = async (
+    view: EditorView,
+    pos: number,
+  ): Promise<void> => {
+    let result: DefinitionResult;
+    try {
+      result = await opts.client.textDocumentTypeDefinition({
+        textDocument: { uri: opts.documentUri },
+        position: positionAt(view, pos),
+      });
+    } catch {
+      return;
+    }
+    showResults(view, "Type Definitions", normalizeLocations(result));
+  };
+
   const findReferences = async (
     view: EditorView,
     pos: number,
@@ -506,6 +701,22 @@ export function lspInteractions(opts: {
         preventDefault: true,
         run: (view) => {
           void gotoDefinition(view, view.state.selection.main.head);
+          return true;
+        },
+      },
+      {
+        key: "Mod-F12",
+        preventDefault: true,
+        run: (view) => {
+          void gotoImplementation(view, view.state.selection.main.head);
+          return true;
+        },
+      },
+      {
+        key: "Mod-Shift-b",
+        preventDefault: true,
+        run: (view) => {
+          void gotoTypeDefinition(view, view.state.selection.main.head);
           return true;
         },
       },
@@ -601,6 +812,9 @@ export class TeraxLspClient extends LanguageServerClient {
       publishDiagnostics: { relatedInformation: true },
       references: { dynamicRegistration: false },
       definition: { dynamicRegistration: false },
+      declaration: { dynamicRegistration: false },
+      implementation: { dynamicRegistration: false },
+      typeDefinition: { dynamicRegistration: false },
       synchronization: {
         ...(params.capabilities.textDocument?.synchronization ?? {}),
         dynamicRegistration: false,
@@ -647,6 +861,26 @@ export class TeraxLspClient extends LanguageServerClient {
   }): Promise<LspLocation[] | null> {
     return this.raw.request("textDocument/references", params, 10_000) as
       Promise<LspLocation[] | null>;
+  }
+
+  textDocumentImplementation(params: {
+    textDocument: { uri: string };
+    position: LspPos;
+  }): Promise<DefinitionResult> {
+    return this.raw.request("textDocument/implementation", params, 10_000) as
+      Promise<DefinitionResult>;
+  }
+
+  override textDocumentTypeDefinition(
+    params: any,
+  ): Promise<any> {
+    return this.raw.request("textDocument/typeDefinition", params, 10_000);
+  }
+
+  override textDocumentDeclaration(
+    params: any,
+  ): Promise<any> {
+    return this.raw.request("textDocument/declaration", params, 10_000);
   }
 
   textDocumentDocumentSymbol(params: {

@@ -69,6 +69,10 @@ export type CommandPaletteActionContext = {
   switchSpace: (id: string) => void;
   runDotnetCommand?: (command: string) => void;
   gotoSymbol?: () => void;
+  gotoDefinition?: () => void;
+  gotoImplementation?: () => void;
+  gotoTypeDefinition?: () => void;
+  findReferences?: () => void;
 };
 
 const noop = () => {};
@@ -326,6 +330,63 @@ export function createCommandItems(
       shortcutId: "editor.gotoSymbol",
       disabledReason: ctx.gotoSymbol ? undefined : "No active editor",
       run: () => ctx.gotoSymbol?.(),
+    },
+    {
+      id: "editor.gotoDefinition",
+      title: "Go to Declaration or Usages",
+      group: "Search",
+      keywords: [
+        "definition",
+        "declaration",
+        "goto",
+        "navigate",
+        "method",
+        "class",
+        "c#",
+        "dotnet",
+      ],
+      icon: SourceCodeIcon,
+      shortcutId: "editor.gotoDefinition",
+      disabledReason: ctx.gotoDefinition ? undefined : "No active editor",
+      run: () => ctx.gotoDefinition?.(),
+    },
+    {
+      id: "editor.gotoImplementation",
+      title: "Go to Implementation",
+      group: "Search",
+      keywords: [
+        "implementation",
+        "interface",
+        "subclass",
+        "override",
+        "navigate",
+        "goto",
+        "c#",
+      ],
+      icon: SourceCodeIcon,
+      shortcutId: "editor.gotoImplementation",
+      disabledReason: ctx.gotoImplementation ? undefined : "No active editor",
+      run: () => ctx.gotoImplementation?.(),
+    },
+    {
+      id: "editor.gotoTypeDefinition",
+      title: "Go to Type Definition",
+      group: "Search",
+      keywords: ["type", "typedef", "class", "struct", "goto", "navigate"],
+      icon: SourceCodeIcon,
+      shortcutId: "editor.gotoTypeDefinition",
+      disabledReason: ctx.gotoTypeDefinition ? undefined : "No active editor",
+      run: () => ctx.gotoTypeDefinition?.(),
+    },
+    {
+      id: "editor.findReferences",
+      title: "Find Usages",
+      group: "Search",
+      keywords: ["usages", "references", "callers", "find", "c#", "dotnet"],
+      icon: SourceCodeIcon,
+      shortcutId: "editor.findReferences",
+      disabledReason: ctx.findReferences ? undefined : "No active editor",
+      run: () => ctx.findReferences?.(),
     },
     {
       id: "explorer.search",

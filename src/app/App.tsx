@@ -1032,6 +1032,18 @@ export default function App() {
       "editor.gotoSymbol": () => {
         void editorRefs.current.get(activeId)?.gotoSymbol();
       },
+      "editor.gotoDefinition": () => {
+        void editorRefs.current.get(activeId)?.gotoDefinition();
+      },
+      "editor.gotoImplementation": () => {
+        void editorRefs.current.get(activeId)?.gotoImplementation();
+      },
+      "editor.gotoTypeDefinition": () => {
+        void editorRefs.current.get(activeId)?.gotoTypeDefinition();
+      },
+      "editor.findReferences": () => {
+        void editorRefs.current.get(activeId)?.findReferences();
+      },
     }),
     [
       activeId,
@@ -1363,6 +1375,22 @@ export default function App() {
             gotoSymbol:
               activeTab?.kind === "editor"
                 ? () => void editorRefs.current.get(activeId)?.gotoSymbol()
+                : undefined,
+            gotoDefinition:
+              activeTab?.kind === "editor"
+                ? () => void editorRefs.current.get(activeId)?.gotoDefinition()
+                : undefined,
+            gotoImplementation:
+              activeTab?.kind === "editor"
+                ? () => void editorRefs.current.get(activeId)?.gotoImplementation()
+                : undefined,
+            gotoTypeDefinition:
+              activeTab?.kind === "editor"
+                ? () => void editorRefs.current.get(activeId)?.gotoTypeDefinition()
+                : undefined,
+            findReferences:
+              activeTab?.kind === "editor"
+                ? () => void editorRefs.current.get(activeId)?.findReferences()
                 : undefined,
           })
         : [],

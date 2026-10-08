@@ -4,7 +4,12 @@ export { setLspNavigator } from "./lib/navigator";
 export { allServers, LSP_PRESETS, type LspPreset } from "./lib/presets";
 export { useLspRuntimeStore } from "./lib/runtimeStore";
 export {
+  lspFindReferences,
   lspFormatDocument,
+  lspGotoDeclaration,
+  lspGotoDefinition,
+  lspGotoImplementation,
+  lspGotoTypeDefinition,
   lspOpenDocumentSymbols,
   notifyDocumentSaved,
 } from "./lib/sessionManager";
