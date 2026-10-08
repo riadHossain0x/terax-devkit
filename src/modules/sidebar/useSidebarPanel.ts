@@ -47,7 +47,8 @@ function readSidebarView(): SidebarViewId {
     if (
       stored === "explorer" ||
       stored === "source-control" ||
-      stored === "solution"
+      stored === "solution" ||
+      stored === "debug"
     )
       return stored;
   } catch {

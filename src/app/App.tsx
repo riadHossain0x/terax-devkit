@@ -48,7 +48,11 @@ import { setLspNavigator } from "@/modules/lsp";
 import type { PreviewPaneHandle } from "@/modules/preview";
 import { openSettingsWindow } from "@/modules/settings/openSettingsWindow";
 import { usePreferencesStore } from "@/modules/settings/preferences";
-import { setShowHidden } from "@/modules/settings/store";
+import {
+  setShowHidden,
+  setSidebarShowDebug,
+  setSidebarShowSolution,
+} from "@/modules/settings/store";
 import {
   type ShortcutHandlers,
   type ShortcutId,
@@ -805,6 +809,57 @@ export default function App() {
     openSidebarView("explorer");
     void setShowHidden(!usePreferencesStore.getState().showHidden);
   }, [openSidebarView]);
+
+  const sidebarShowSolution = usePreferencesStore((s) => s.sidebarShowSolution);
+  const sidebarShowDebug = usePreferencesStore((s) => s.sidebarShowDebug);
+
+  const toggleSolutionView = useCallback(() => {
+    const next = !usePreferencesStore.getState().sidebarShowSolution;
+    void setSidebarShowSolution(next);
+    if (!next && sidebarView === "solution") {
+      openSidebarView("explorer");
+    }
+  }, [sidebarView, openSidebarView]);
+
+  const toggleDebugView = useCallback(() => {
+    const next = !usePreferencesStore.getState().sidebarShowDebug;
+    void setSidebarShowDebug(next);
+    if (!next && sidebarView === "debug") {
+      openSidebarView("explorer");
+    }
+  }, [sidebarView, openSidebarView]);
+
+  // Listen for native macOS application menu events
+  useEffect(() => {
+    let unlistenSolution: (() => void) | undefined;
+    let unlistenDebug: (() => void) | undefined;
+
+    void listen("terax://menu-toggle-solution", () => {
+      toggleSolutionView();
+    }).then((unsub) => {
+      unlistenSolution = unsub;
+    });
+
+    void listen("terax://menu-toggle-debug", () => {
+      toggleDebugView();
+    }).then((unsub) => {
+      unlistenDebug = unsub;
+    });
+
+    return () => {
+      unlistenSolution?.();
+      unlistenDebug?.();
+    };
+  }, [toggleSolutionView, toggleDebugView]);
+
+  // Fallback if currently on a view that becomes hidden
+  useEffect(() => {
+    if (sidebarView === "solution" && !sidebarShowSolution) {
+      openSidebarView("explorer");
+    } else if (sidebarView === "debug" && !sidebarShowDebug) {
+      openSidebarView("explorer");
+    }
+  }, [sidebarView, sidebarShowSolution, sidebarShowDebug, openSidebarView]);
   const {
     repositoryTarget: sourceControlRepositoryTarget,
     openInSourceControl: handleOpenRepositoryInSourceControl,
@@ -1293,6 +1348,8 @@ export default function App() {
             focusExplorerSearch: () => explorerRef.current?.focusSearch(),
             toggleSidebar,
             toggleHiddenFiles,
+            toggleSolutionView,
+            toggleDebugView,
             toggleAi: togglePanelAndFocus,
             askAiSelection: askFromSelection,
             openSettings: () => void openSettingsWindow(),
@@ -1326,6 +1383,8 @@ export default function App() {
       splitActivePaneInActiveTab,
       toggleSidebar,
       toggleHiddenFiles,
+      toggleSolutionView,
+      toggleDebugView,
       togglePanelAndFocus,
       askFromSelection,
       activeSpaceId,
@@ -1439,6 +1498,10 @@ export default function App() {
               onReorder={reorderTabByGap}
               onToggleSidebar={toggleSidebar}
               onOpenCommandPalette={() => openCommandPalette("commands")}
+              showSolution={sidebarShowSolution}
+              showDebug={sidebarShowDebug}
+              onToggleShowSolution={toggleSolutionView}
+              onToggleShowDebug={toggleDebugView}
               onActivateAgent={onActivateAgent}
               onActivateLocalAgent={onActivateLocalAgent}
               onOpenSettings={() => void openSettingsWindow()}
@@ -1527,6 +1590,8 @@ export default function App() {
                       activeView={sidebarView}
                       onSelectView={persistSidebarView}
                       changedCount={sourceControl.changedCount}
+                      hasSolution={sidebarShowSolution}
+                      hasDebug={sidebarShowDebug}
                     />
                   </div>
                 </div>

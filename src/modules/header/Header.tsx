@@ -6,7 +6,18 @@ import type { AgentLaunchRequest } from "@/modules/agents/lib/launcher";
 import type { Tab } from "@/modules/tabs";
 import { TabBar } from "@/modules/tabs";
 import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Bug01Icon,
+  CodeSquareIcon,
   CommandIcon,
+  Layout01Icon,
   Settings01Icon,
   SidebarLeftIcon,
 } from "@hugeicons/core-free-icons";
@@ -49,6 +60,10 @@ type Props = {
   onOverrideLanguage?: (id: number, lang: string | null) => void;
   onToggleSidebar: () => void;
   onOpenCommandPalette: () => void;
+  showSolution?: boolean;
+  showDebug?: boolean;
+  onToggleShowSolution?: () => void;
+  onToggleShowDebug?: () => void;
   onActivateAgent: (tabId: number, leafId: number) => void;
   onActivateLocalAgent: () => void;
   onOpenSettings: () => void;
@@ -79,6 +94,10 @@ export function Header({
   onOverrideLanguage,
   onToggleSidebar,
   onOpenCommandPalette,
+  showSolution = true,
+  showDebug = true,
+  onToggleShowSolution,
+  onToggleShowDebug,
   onActivateAgent,
   onActivateLocalAgent,
   onOpenSettings,
@@ -130,6 +149,47 @@ export function Header({
         >
           <HugeiconsIcon icon={SidebarLeftIcon} size={18} strokeWidth={1.75} />
         </Button>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              title="View options"
+              className="shrink-0 gap-1 rounded-md px-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <HugeiconsIcon icon={Layout01Icon} size={15} strokeWidth={1.75} />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-48">
+            <DropdownMenuLabel>Sidebar Views</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuCheckboxItem
+              checked={showSolution}
+              onCheckedChange={() => onToggleShowSolution?.()}
+              className="gap-2"
+            >
+              <HugeiconsIcon
+                icon={CodeSquareIcon}
+                size={14}
+                className="shrink-0 text-muted-foreground"
+              />
+              <span>Solution</span>
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={showDebug}
+              onCheckedChange={() => onToggleShowDebug?.()}
+              className="gap-2"
+            >
+              <HugeiconsIcon
+                icon={Bug01Icon}
+                size={14}
+                className="shrink-0 text-muted-foreground"
+              />
+              <span>Debug</span>
+            </DropdownMenuCheckboxItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Button
           size="icon-sm"

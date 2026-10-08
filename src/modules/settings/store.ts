@@ -156,6 +156,8 @@ export type Preferences = {
   editorWordWrap: boolean;
   editorWordWrapColumn: number;
   showHidden: boolean;
+  sidebarShowSolution: boolean;
+  sidebarShowDebug: boolean;
   explorerGitDecorations: boolean;
   terminalRenderer: "auto" | "webgl";
   terminalScreenReader: boolean;
@@ -252,6 +254,8 @@ const KEY_VIM_MODE = "vimMode";
 const KEY_EDITOR_WORD_WRAP = "editorWordWrap";
 const KEY_EDITOR_WORD_WRAP_COLUMN = "editorWordWrapColumn";
 const KEY_SHOW_HIDDEN = "showHidden";
+const KEY_SIDEBAR_SHOW_SOLUTION = "sidebarShowSolution";
+const KEY_SIDEBAR_SHOW_DEBUG = "sidebarShowDebug";
 const LEGACY_KEY_SHOW_HIDDEN_DIRS = "showHiddenDirectories";
 const KEY_EXPLORER_GIT_DECORATIONS = "explorerGitDecorations";
 const KEY_TERMINAL_RENDERER = "terminalRenderer";
@@ -345,6 +349,8 @@ export const DEFAULT_PREFERENCES: Preferences = {
   editorWordWrap: false,
   editorWordWrapColumn: EDITOR_WORD_WRAP_COLUMN_DEFAULT,
   showHidden: false,
+  sidebarShowSolution: true,
+  sidebarShowDebug: true,
   explorerGitDecorations: true,
   terminalRenderer: "auto",
   terminalScreenReader: false,
@@ -500,6 +506,12 @@ export async function loadPreferences(): Promise<Preferences> {
       get<boolean>(KEY_SHOW_HIDDEN) ??
       get<boolean>(LEGACY_KEY_SHOW_HIDDEN_DIRS) ??
       DEFAULT_PREFERENCES.showHidden,
+    sidebarShowSolution:
+      get<boolean>(KEY_SIDEBAR_SHOW_SOLUTION) ??
+      DEFAULT_PREFERENCES.sidebarShowSolution,
+    sidebarShowDebug:
+      get<boolean>(KEY_SIDEBAR_SHOW_DEBUG) ??
+      DEFAULT_PREFERENCES.sidebarShowDebug,
     explorerGitDecorations:
       get<boolean>(KEY_EXPLORER_GIT_DECORATIONS) ??
       DEFAULT_PREFERENCES.explorerGitDecorations,
@@ -793,6 +805,14 @@ export async function setShowHidden(value: boolean): Promise<void> {
   await writePref(KEY_SHOW_HIDDEN, value);
 }
 
+export async function setSidebarShowSolution(value: boolean): Promise<void> {
+  await writePref(KEY_SIDEBAR_SHOW_SOLUTION, value);
+}
+
+export async function setSidebarShowDebug(value: boolean): Promise<void> {
+  await writePref(KEY_SIDEBAR_SHOW_DEBUG, value);
+}
+
 export async function setExplorerGitDecorations(value: boolean): Promise<void> {
   await writePref(KEY_EXPLORER_GIT_DECORATIONS, value);
 }
@@ -999,6 +1019,8 @@ export async function onPreferencesChange(
     [KEY_EDITOR_WORD_WRAP]: "editorWordWrap",
     [KEY_EDITOR_WORD_WRAP_COLUMN]: "editorWordWrapColumn",
     [KEY_SHOW_HIDDEN]: "showHidden",
+    [KEY_SIDEBAR_SHOW_SOLUTION]: "sidebarShowSolution",
+    [KEY_SIDEBAR_SHOW_DEBUG]: "sidebarShowDebug",
     [KEY_EXPLORER_GIT_DECORATIONS]: "explorerGitDecorations",
     [KEY_TERMINAL_RENDERER]: "terminalRenderer",
     [KEY_TERMINAL_SCREEN_READER]: "terminalScreenReader",

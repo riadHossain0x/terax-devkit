@@ -22,6 +22,7 @@ type Props = {
   onSelectView: (view: SidebarViewId) => void;
   changedCount: number;
   hasSolution?: boolean;
+  hasDebug?: boolean;
 };
 
 export function SidebarRail({
@@ -29,6 +30,7 @@ export function SidebarRail({
   onSelectView,
   changedCount,
   hasSolution = true,
+  hasDebug = true,
 }: Props) {
   const items: RailItem[] = [
     { id: "explorer", label: "Files", icon: FolderTreeIcon },
@@ -48,11 +50,13 @@ export function SidebarRail({
     });
   }
 
-  items.push({
-    id: "debug",
-    label: "Debug",
-    icon: Bug01Icon,
-  });
+  if (hasDebug) {
+    items.push({
+      id: "debug",
+      label: "Debug",
+      icon: Bug01Icon,
+    });
+  }
 
   return (
     <div

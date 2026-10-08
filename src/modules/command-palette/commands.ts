@@ -56,6 +56,8 @@ export type CommandPaletteActionContext = {
   focusExplorerSearch: () => void;
   toggleSidebar: () => void;
   toggleHiddenFiles: () => void;
+  toggleSolutionView?: () => void;
+  toggleDebugView?: () => void;
   toggleAi: () => void;
   askAiSelection: () => void;
   openSettings: () => void;
@@ -352,6 +354,24 @@ export function createCommandItems(
       icon: ViewIcon,
       shortcutId: "explorer.toggleHidden",
       run: ctx.toggleHiddenFiles,
+    },
+    {
+      id: "view.toggleSolution",
+      title: "Toggle Solution in sidebar",
+      group: "View",
+      keywords: ["solution", "dotnet", "sidebar", "view", "toggle", "c#"],
+      icon: ViewIcon,
+      disabledReason: ctx.toggleSolutionView ? undefined : "Unavailable",
+      run: () => ctx.toggleSolutionView?.(),
+    },
+    {
+      id: "view.toggleDebug",
+      title: "Toggle Debug in sidebar",
+      group: "View",
+      keywords: ["debug", "debugger", "sidebar", "view", "toggle"],
+      icon: ViewIcon,
+      disabledReason: ctx.toggleDebugView ? undefined : "Unavailable",
+      run: () => ctx.toggleDebugView?.(),
     },
     {
       id: "ai.toggle",
