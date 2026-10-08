@@ -14,6 +14,10 @@ import { onKeysChanged } from "@/modules/settings/store";
 import {
   acceptCompletion,
   autocompletion,
+  hasNextSnippetField,
+  hasPrevSnippetField,
+  nextSnippetField,
+  prevSnippetField,
   startCompletion,
 } from "@codemirror/autocomplete";
 import { redo, undo } from "@codemirror/commands";
@@ -388,8 +392,27 @@ export const EditorPane = memo(
         breakpointCompartment.of(breakpointGutterExtension(() => pathRef.current)),
         debugActiveLineCompartment.of(debugActiveLineExtension()),
         diagnosticsReporter(() => pathRef.current),
-        // Before inlineCompletion so an open popup wins Tab over the ghost.
-        Prec.highest(keymap.of([{ key: "Tab", run: acceptCompletion }])),
+        // Before inlineCompletion so an open popup wins Tab over the ghost,
+        // and active snippet fields can advance with Tab / Shift-Tab.
+        Prec.highest(
+          keymap.of([
+            {
+              key: "Tab",
+              run: (view) => {
+                if (acceptCompletion(view)) return true;
+                if (hasNextSnippetField(view.state)) return nextSnippetField(view);
+                return false;
+              },
+            },
+            {
+              key: "Shift-Tab",
+              run: (view) => {
+                if (hasPrevSnippetField(view.state)) return prevSnippetField(view);
+                return false;
+              },
+            },
+          ]),
+        ),
         inlineCompletion({
           getPrefs: () => {
             const s = usePreferencesStore.getState();

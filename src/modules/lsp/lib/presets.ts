@@ -273,9 +273,9 @@ export const LSP_PRESETS: LspPreset[] = [
     rootMarkers: [
       "*.sln",
       "*.slnx",
-      "*.csproj",
       "global.json",
       "Directory.Build.props",
+      "*.csproj",
       ".git",
     ],
     install: {

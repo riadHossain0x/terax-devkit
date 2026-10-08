@@ -38,8 +38,15 @@ import {
   languageServerWithTransport as baseLanguageServerWithTransport,
   SynchronizationMethod,
 } from "codemirror-languageserver";
-import { autocompletion } from "@codemirror/autocomplete";
-import { csharpSnippetCompletionSource } from "@/modules/editor/lib/snippets/csharpSnippets";
+import {
+  autocompletion,
+  type Completion,
+  type CompletionContext,
+} from "@codemirror/autocomplete";
+import {
+  csharpSnippetCompletionSource,
+  CSHARP_SNIPPET_LABELS,
+} from "@/modules/editor/lib/snippets/csharpSnippets";
 import {
   signatureHelpExtension,
   type SignatureHelp,
@@ -57,7 +64,7 @@ export function languageServerWithTransport(
 
   const customAc = autocompletion({
     override: [
-      async (context) => {
+      async (context: CompletionContext) => {
         const { state, pos, explicit, view } = context;
         if (!view) return null;
         const plugin = view.plugin(languageServerPlugin);
@@ -82,12 +89,41 @@ export function languageServerWithTransport(
           return null;
         }
         const lspPos = { line: line.number - 1, character: pos - line.from };
-        return await plugin.requestCompletion(context, lspPos, {
+        const lspResult = await plugin.requestCompletion(context, lspPos, {
           triggerCharacter: trigChar,
           triggerKind: trigKind as 1 | 2 | 3,
         });
+
+        if (!isCSharp) {
+          return lspResult;
+        }
+
+        const snippetResult = csharpSnippetCompletionSource(context);
+        if (!lspResult) {
+          return snippetResult;
+        }
+        if (!snippetResult) {
+          return lspResult;
+        }
+
+        // When a rich snippet exists (e.g. "class", "prop", "ctor", "interface"),
+        // filter out plain LSP keyword duplicates that only insert bare text.
+        const filteredLspOptions = lspResult.options.filter((opt: Completion) => {
+          if (CSHARP_SNIPPET_LABELS.has(opt.label)) {
+            // Drop plain keyword completions from LSP in favor of the rich snippet template
+            if (opt.type === "keyword" || !opt.apply) {
+              return false;
+            }
+          }
+          return true;
+        });
+
+        return {
+          from: Math.min(lspResult.from, snippetResult.from),
+          options: [...snippetResult.options, ...filteredLspOptions],
+          validFor: lspResult.validFor ?? snippetResult.validFor,
+        };
       },
-      ...(isCSharp ? [csharpSnippetCompletionSource] : []),
     ],
   });
 
@@ -251,20 +287,28 @@ function lspDisplayResults(
     lspNavigateTo(view, documentUri, locs[0]);
     return;
   }
-  const byLoc = new Map<string, LspLocation>();
+  const seen = new Set<string>();
+  const items: LocationItem[] = [];
   for (const loc of locs) {
+    const rawKey = `${loc.uri}:${loc.range.start.line}:${loc.range.start.character}`;
+    if (seen.has(rawKey)) continue;
+    seen.add(rawKey);
+
     const path = fileUriToPath(loc.uri) ?? loc.uri;
-    const rel = path.split(/[\\/]/).pop() ?? path;
-    byLoc.set(`${rel}:${loc.range.start.line + 1}`, loc);
-  }
-  const items: LocationItem[] = [...byLoc.entries()]
-    .map(([text, loc]) => ({
+    const parts = path.split(/[\\/]/);
+    const filename = parts.pop() ?? path;
+    const parent = parts.pop();
+    const rel = parent ? `${parent}/${filename}` : filename;
+    const label = `${rel}:${loc.range.start.line + 1}`;
+
+    items.push({
       uri: loc.uri,
       line: loc.range.start.line,
       character: loc.range.start.character,
-      label: text,
-    }))
-    .sort((a, b) => a.label.localeCompare(b.label));
+      label,
+    });
+  }
+  items.sort((a, b) => a.label.localeCompare(b.label));
 
   openLocationsPanel(view, {
     title,
@@ -555,16 +599,20 @@ export function lspInteractions(opts: {
       navigate(view, locs[0]);
       return;
     }
-    const byLoc = new Map<string, LspLocation>();
-    for (const loc of locs) byLoc.set(label(loc), loc);
-    const items: LocationItem[] = [...byLoc.entries()]
-      .map(([text, loc]) => ({
+    const seen = new Set<string>();
+    const items: LocationItem[] = [];
+    for (const loc of locs) {
+      const rawKey = `${loc.uri}:${loc.range.start.line}:${loc.range.start.character}`;
+      if (seen.has(rawKey)) continue;
+      seen.add(rawKey);
+      items.push({
         uri: loc.uri,
         line: loc.range.start.line,
         character: loc.range.start.character,
-        label: text,
-      }))
-      .sort((a, b) => a.label.localeCompare(b.label));
+        label: label(loc),
+      });
+    }
+    items.sort((a, b) => a.label.localeCompare(b.label));
     openLocationsPanel(view, {
       title,
       items,

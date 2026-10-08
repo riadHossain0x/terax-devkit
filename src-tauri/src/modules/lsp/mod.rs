@@ -114,8 +114,29 @@ pub async fn lsp_resolve_root(path: String, markers: Vec<String>) -> Option<Stri
         .flatten()
 }
 
+fn check_dir_has_marker(dir: &std::path::Path, marker: &str) -> bool {
+    if marker.starts_with("*.") {
+        let ext = &marker[1..];
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            entries.filter_map(Result::ok).any(|e| {
+                e.file_name()
+                    .to_str()
+                    .map(|name| name.ends_with(ext))
+                    .unwrap_or(false)
+            })
+        } else {
+            false
+        }
+    } else {
+        dir.join(marker).exists()
+    }
+}
+
 // Stops below the home directory: a stray ~/package.json must not make a
 // server index the entire home dir.
+// Prioritizes solution/workspace markers (like *.sln, *.slnx) across all ancestors
+// over individual subproject markers (like *.csproj) so multi-project solutions
+// are analyzed holistically.
 fn resolve_root(path: &str, markers: &[String]) -> Option<String> {
     let home = dirs::home_dir();
     let start = std::path::PathBuf::from(path);
@@ -124,32 +145,36 @@ fn resolve_root(path: &str, markers: &[String]) -> Option<String> {
     } else {
         start.parent()?
     };
+
+    let mut ancestors = Vec::new();
     loop {
         if home.as_deref() == Some(dir) {
-            return None;
+            break;
         }
-        let matched = markers.iter().any(|m| {
-            if m.starts_with("*.") {
-                let ext = &m[1..];
-                if let Ok(entries) = std::fs::read_dir(dir) {
-                    entries.filter_map(Result::ok).any(|e| {
-                        e.file_name()
-                            .to_str()
-                            .map(|name| name.ends_with(ext))
-                            .unwrap_or(false)
-                    })
-                } else {
-                    false
-                }
-            } else {
-                dir.join(m).exists()
-            }
-        });
-        if matched {
-            return Some(dir.to_string_lossy().into_owned());
+        ancestors.push(dir.to_path_buf());
+        match dir.parent() {
+            Some(p) => dir = p,
+            None => break,
         }
-        dir = dir.parent()?;
     }
+
+    if ancestors.is_empty() {
+        return None;
+    }
+
+    // Check each marker in order of precedence:
+    // If a marker appears earlier in `markers` (e.g. *.sln, *.slnx),
+    // any ancestor containing that marker takes precedence over later markers (e.g. *.csproj).
+    // For a given marker, the closest (innermost) ancestor wins.
+    for marker in markers {
+        for anc in &ancestors {
+            if check_dir_has_marker(anc, marker) {
+                return Some(anc.to_string_lossy().into_owned());
+            }
+        }
+    }
+
+    None
 }
 
 // Async so a stalled server with a full stdin pipe blocks a worker
@@ -238,5 +263,27 @@ mod tests {
             &["*.sln".to_string(), "*.csproj".to_string()],
         );
         assert_eq!(found, Some(root.to_string_lossy().into_owned()));
+    }
+
+    #[test]
+    fn resolve_root_prioritizes_solution_over_subproject_csproj() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let solution_root = tmp.path().join("Uapp-Backend");
+        let subproject = solution_root.join("modules").join("Uapp.Students");
+        std::fs::create_dir_all(&subproject).unwrap();
+        std::fs::write(solution_root.join("Uapp.sln"), "").unwrap();
+        std::fs::write(subproject.join("Uapp.Students.csproj"), "").unwrap();
+        std::fs::write(subproject.join("StudentService.cs"), "").unwrap();
+
+        let markers = vec![
+            "*.sln".to_string(),
+            "*.slnx".to_string(),
+            "*.csproj".to_string(),
+        ];
+        let found = resolve_root(
+            subproject.join("StudentService.cs").to_str().unwrap(),
+            &markers,
+        );
+        assert_eq!(found, Some(solution_root.to_string_lossy().into_owned()));
     }
 }

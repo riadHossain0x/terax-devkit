@@ -8,52 +8,52 @@ import {
 export const CSHARP_SNIPPETS: Completion[] = [
   snippetCompletion("public ${1:int} ${2:MyProperty} { get; set; }", {
     label: "prop",
-    detail: "Property with get/set",
-    type: "property",
+    detail: "Snippet: Property with get/set",
+    type: "snippet",
     boost: 99,
   }),
   snippetCompletion(
     "public ${1:int} ${2:MyProperty} { get; private set; }",
     {
       label: "propg",
-      detail: "Property with get and private set",
-      type: "property",
+      detail: "Snippet: Property with get and private set",
+      type: "snippet",
       boost: 98,
     },
   ),
   snippetCompletion("public ${1:int} ${2:MyProperty} { get; init; }", {
     label: "propr",
-    detail: "Property with get and init",
-    type: "property",
+    detail: "Snippet: Property with get and init",
+    type: "snippet",
     boost: 97,
   }),
   snippetCompletion("public ${1:int} ${2:MyProperty} => ${3:expression};", {
     label: "propbody",
-    detail: "Expression-bodied property",
-    type: "property",
+    detail: "Snippet: Expression-bodied property",
+    type: "snippet",
     boost: 96,
   }),
   snippetCompletion(
     "public ${1:MyClass}(${2})\n{\n\t${3}\n}",
     {
       label: "ctor",
-      detail: "Constructor definition",
-      type: "method",
+      detail: "Snippet: Constructor definition",
+      type: "snippet",
       boost: 99,
     },
   ),
   snippetCompletion("Console.WriteLine(${1});", {
     label: "cw",
-    detail: "Console.WriteLine()",
-    type: "function",
+    detail: "Snippet: Console.WriteLine()",
+    type: "snippet",
     boost: 99,
   }),
   snippetCompletion(
     "public class ${1:MyClass}\n{\n\t${2}\n}",
     {
       label: "class",
-      detail: "Class declaration",
-      type: "class",
+      detail: "Snippet: Class declaration",
+      type: "snippet",
       boost: 95,
     },
   ),
@@ -61,8 +61,8 @@ export const CSHARP_SNIPPETS: Completion[] = [
     "public interface I${1:MyInterface}\n{\n\t${2}\n}",
     {
       label: "interface",
-      detail: "Interface declaration",
-      type: "interface",
+      detail: "Snippet: Interface declaration",
+      type: "snippet",
       boost: 95,
     },
   ),
@@ -70,8 +70,8 @@ export const CSHARP_SNIPPETS: Completion[] = [
     "public record ${1:MyRecord}(${2});",
     {
       label: "record",
-      detail: "Record declaration",
-      type: "class",
+      detail: "Snippet: Record declaration",
+      type: "snippet",
       boost: 94,
     },
   ),
@@ -79,8 +79,8 @@ export const CSHARP_SNIPPETS: Completion[] = [
     "public enum ${1:MyEnum}\n{\n\t${2}\n}",
     {
       label: "enum",
-      detail: "Enum declaration",
-      type: "enum",
+      detail: "Snippet: Enum declaration",
+      type: "snippet",
       boost: 94,
     },
   ),
@@ -88,8 +88,8 @@ export const CSHARP_SNIPPETS: Completion[] = [
     "public struct ${1:MyStruct}\n{\n\t${2}\n}",
     {
       label: "struct",
-      detail: "Struct declaration",
-      type: "class",
+      detail: "Snippet: Struct declaration",
+      type: "snippet",
       boost: 93,
     },
   ),
@@ -97,8 +97,8 @@ export const CSHARP_SNIPPETS: Completion[] = [
     "public ${1:void} ${2:MyMethod}(${3})\n{\n\t${4}\n}",
     {
       label: "method",
-      detail: "Method declaration",
-      type: "method",
+      detail: "Snippet: Method declaration",
+      type: "snippet",
       boost: 90,
     },
   ),
@@ -106,8 +106,8 @@ export const CSHARP_SNIPPETS: Completion[] = [
     "public async Task<${1:void}> ${2:MyMethodAsync}(${3})\n{\n\t${4}\n}",
     {
       label: "async",
-      detail: "Async Task method",
-      type: "method",
+      detail: "Snippet: Async Task method",
+      type: "snippet",
       boost: 91,
     },
   ),
@@ -115,8 +115,8 @@ export const CSHARP_SNIPPETS: Completion[] = [
     "try\n{\n\t${1}\n}\ncatch (${2:Exception} ex)\n{\n\t${3}\n}",
     {
       label: "try",
-      detail: "try-catch block",
-      type: "keyword",
+      detail: "Snippet: try-catch block",
+      type: "snippet",
       boost: 90,
     },
   ),
@@ -124,8 +124,8 @@ export const CSHARP_SNIPPETS: Completion[] = [
     "try\n{\n\t${1}\n}\nfinally\n{\n\t${2}\n}",
     {
       label: "tryf",
-      detail: "try-finally block",
-      type: "keyword",
+      detail: "Snippet: try-finally block",
+      type: "snippet",
       boost: 89,
     },
   ),
@@ -133,8 +133,8 @@ export const CSHARP_SNIPPETS: Completion[] = [
     "foreach (var ${1:item} in ${2:collection})\n{\n\t${3}\n}",
     {
       label: "foreach",
-      detail: "foreach loop",
-      type: "keyword",
+      detail: "Snippet: foreach loop",
+      type: "snippet",
       boost: 90,
     },
   ),
@@ -142,8 +142,8 @@ export const CSHARP_SNIPPETS: Completion[] = [
     "for (int ${1:i} = 0; ${1:i} < ${2:length}; ${1:i}++)\n{\n\t${3}\n}",
     {
       label: "for",
-      detail: "for loop",
-      type: "keyword",
+      detail: "Snippet: for loop",
+      type: "snippet",
       boost: 88,
     },
   ),
@@ -151,8 +151,8 @@ export const CSHARP_SNIPPETS: Completion[] = [
     "while (${1:condition})\n{\n\t${2}\n}",
     {
       label: "while",
-      detail: "while loop",
-      type: "keyword",
+      detail: "Snippet: while loop",
+      type: "snippet",
       boost: 85,
     },
   ),
@@ -160,8 +160,8 @@ export const CSHARP_SNIPPETS: Completion[] = [
     "switch (${1:expression})\n{\n\tcase ${2:pattern}:\n\t\t${3}\n\t\tbreak;\n\tdefault:\n\t\tbreak;\n}",
     {
       label: "switch",
-      detail: "switch statement",
-      type: "keyword",
+      detail: "Snippet: switch statement",
+      type: "snippet",
       boost: 87,
     },
   ),
@@ -169,12 +169,16 @@ export const CSHARP_SNIPPETS: Completion[] = [
     "using (${1:var resource = new Object()})\n{\n\t${2}\n}",
     {
       label: "using",
-      detail: "using statement",
-      type: "keyword",
+      detail: "Snippet: using statement",
+      type: "snippet",
       boost: 86,
     },
   ),
 ];
+
+export const CSHARP_SNIPPET_LABELS = new Set<string>(
+  CSHARP_SNIPPETS.map((s) => s.label),
+);
 
 export function csharpSnippetCompletionSource(
   context: CompletionContext,

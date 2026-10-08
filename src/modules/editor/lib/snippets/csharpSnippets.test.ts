@@ -18,6 +18,10 @@ describe("csharpSnippets", () => {
     expect(labels).toContain("async");
     expect(labels).toContain("foreach");
     expect(labels).toContain("try");
+    for (const s of CSHARP_SNIPPETS) {
+      expect(s.type).toBe("snippet");
+      expect(s.detail).toMatch(/^Snippet:/);
+    }
   });
 
   it("completes when typing word prefix", () => {
