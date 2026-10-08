@@ -1,5 +1,5 @@
-mod env;
-mod framing;
+pub(crate) mod env;
+pub(crate) mod framing;
 mod session;
 
 use std::collections::HashMap;

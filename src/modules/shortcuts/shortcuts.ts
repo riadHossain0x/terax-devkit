@@ -51,7 +51,13 @@ export type ShortcutId =
   | "editor.save"
   | "editor.aiComplete"
   | "editor.codeComplete"
-  | "editor.gotoSymbol";
+  | "editor.gotoSymbol"
+  | "debug.toggleBreakpoint"
+  | "debug.startOrContinue"
+  | "debug.stepOver"
+  | "debug.stepInto"
+  | "debug.stepOut"
+  | "debug.stop";
 
 export type ShortcutGroup =
   | "General"
@@ -395,6 +401,42 @@ export const SHORTCUTS: Shortcut[] = [
     label: "Go to symbol in file",
     group: "Editor",
     defaultBindings: [{ [MOD_PROP]: true, shift: true, key: "o" }],
+  },
+  {
+    id: "debug.toggleBreakpoint",
+    label: "Toggle breakpoint",
+    group: "Editor",
+    defaultBindings: [{ key: "F9" }],
+  },
+  {
+    id: "debug.startOrContinue",
+    label: "Start / Continue debugging",
+    group: "Editor",
+    defaultBindings: [{ key: "F5" }],
+  },
+  {
+    id: "debug.stepOver",
+    label: "Step over",
+    group: "Editor",
+    defaultBindings: [{ key: "F10" }],
+  },
+  {
+    id: "debug.stepInto",
+    label: "Step into",
+    group: "Editor",
+    defaultBindings: [{ key: "F11" }],
+  },
+  {
+    id: "debug.stepOut",
+    label: "Step out",
+    group: "Editor",
+    defaultBindings: [{ shift: true, key: "F11" }],
+  },
+  {
+    id: "debug.stop",
+    label: "Stop debugging",
+    group: "Editor",
+    defaultBindings: [{ shift: true, key: "F5" }],
   },
 ];
 

@@ -10,6 +10,7 @@ import {
   ArrowDown01Icon,
   MoreHorizontalIcon,
   Search01Icon,
+  Bug01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useEffect, useRef, useState } from "react";
@@ -25,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useDotnetStore } from "../lib/dotnetStore";
+import { useDotnetDebugStore } from "../debug/useDotnetDebugStore";
 import { ProjectDirectoryTree } from "./ProjectDirectoryTree";
 
 type Props = {
@@ -259,6 +261,21 @@ export function SolutionExplorer({
 
                   {/* Quick action buttons */}
                   <div className="hidden group-hover:flex items-center gap-0.5">
+                    <button
+                      type="button"
+                      title={`Debug ${proj.name}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (workspaceRoot) {
+                          void useDotnetDebugStore
+                            .getState()
+                            .startDebugging(proj, workspaceRoot);
+                        }
+                      }}
+                      className="flex h-5 w-5 items-center justify-center rounded hover:bg-foreground/15 text-rose-400 hover:text-rose-300"
+                    >
+                      <HugeiconsIcon icon={Bug01Icon} size={11} />
+                    </button>
                     <button
                       type="button"
                       title={`Run ${proj.name}`}

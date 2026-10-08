@@ -14,6 +14,8 @@ export const vimCompartment = new Compartment();
 export const lspCompartment = new Compartment();
 export const indentCompartment = new Compartment();
 export const snippetCompartment = new Compartment();
+export const breakpointCompartment = new Compartment();
+export const debugActiveLineCompartment = new Compartment();
 
 export function indentExtension(unit: string): Extension {
   return [

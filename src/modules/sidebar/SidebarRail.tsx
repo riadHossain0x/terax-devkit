@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import {
+  Bug01Icon,
   CodeSquareIcon,
   FolderGitTwoIcon,
   FolderTreeIcon,
@@ -46,6 +47,12 @@ export function SidebarRail({
       icon: CodeSquareIcon,
     });
   }
+
+  items.push({
+    id: "debug",
+    label: "Debug",
+    icon: Bug01Icon,
+  });
 
   return (
     <div

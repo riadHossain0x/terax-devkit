@@ -21,7 +21,7 @@ import {
   SearchQuery,
   setSearchQuery,
 } from "@codemirror/search";
-import { Prec } from "@codemirror/state";
+import { Prec, StateEffect } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { vim } from "@replit/codemirror-vim";
 import { convertFileSrc } from "@tauri-apps/api/core";
@@ -45,7 +45,9 @@ import {
 import { diagnosticsReporter } from "./lib/diagnosticsReporter";
 import { useDiagnosticsStore } from "./lib/diagnosticsStore";
 import {
+  breakpointCompartment,
   buildSharedExtensions,
+  debugActiveLineCompartment,
   DEFAULT_INDENT,
   indentCompartment,
   indentExtension,
@@ -56,6 +58,15 @@ import {
   wordWrapExtension,
   wrapCompartment,
 } from "./lib/extensions";
+import {
+  breakpointGutterExtension,
+  setBreakpointsEffect,
+} from "./lib/breakpointGutter";
+import {
+  debugActiveLineExtension,
+  setActiveDebugLineEffect,
+} from "./lib/debugActiveLine";
+import { useDotnetDebugStore } from "@/modules/dotnet/debug/useDotnetDebugStore";
 import {
   applyFormattedContent,
   readFileText,
@@ -346,6 +357,8 @@ export const EditorPane = memo(
         languageCompartment.of([]),
         lspCompartment.of([]),
         snippetCompartment.of([]),
+        breakpointCompartment.of(breakpointGutterExtension(() => pathRef.current)),
+        debugActiveLineCompartment.of(debugActiveLineExtension()),
         diagnosticsReporter(() => pathRef.current),
         // Before inlineCompletion so an open popup wins Tab over the ghost.
         Prec.highest(keymap.of([{ key: "Tab", run: acceptCompletion }])),
@@ -399,6 +412,18 @@ export const EditorPane = memo(
             },
           },
           { key: "Ctrl-g", run: gotoLine },
+          {
+            key: "F9",
+            run: (view) => {
+              const head = view.state.selection.main.head;
+              const lineNum = view.state.doc.lineAt(head).number;
+              const curPath = pathRef.current;
+              if (curPath) {
+                useDotnetDebugStore.getState().toggleBreakpoint(curPath, lineNum);
+              }
+              return true;
+            },
+          },
         ]),
       ],
       [],
@@ -448,6 +473,40 @@ export const EditorPane = memo(
       () => () => useDiagnosticsStore.getState().report(pathRef.current, null),
       [],
     );
+
+    // Sync breakpoints into CodeMirror gutter
+    const breakpoints = useDotnetDebugStore((s) => s.breakpoints[path]);
+    useEffect(() => {
+      const view = cmRef.current?.view;
+      if (!view || doc.status !== "ready") return;
+      view.dispatch({
+        effects: setBreakpointsEffect.of(breakpoints || []),
+      });
+    }, [breakpoints, doc.status]);
+
+    // Sync active debug paused line
+    const activeFrame = useDotnetDebugStore((s) => s.activeFrame);
+    useEffect(() => {
+      const view = cmRef.current?.view;
+      if (!view || doc.status !== "ready") return;
+      const isTargetFile =
+        activeFrame?.source?.path &&
+        (activeFrame.source.path === path ||
+          activeFrame.source.path.endsWith(path) ||
+          path.endsWith(activeFrame.source.path));
+
+      const targetLine = isTargetFile ? activeFrame.line : null;
+      const effects: StateEffect<unknown>[] = [
+        setActiveDebugLineEffect.of(targetLine),
+      ];
+
+      if (targetLine && targetLine <= view.state.doc.lines) {
+        const line = view.state.doc.line(targetLine);
+        effects.push(EditorView.scrollIntoView(line.from, { y: "center" }));
+      }
+
+      view.dispatch({ effects });
+    }, [activeFrame, doc.status, path]);
 
     // Warm the language chunk while the file is still being read; the
     // ready-gated effect below then resolves from cache.

@@ -3,7 +3,7 @@ pub mod modules;
 #[cfg(target_os = "macos")]
 use modules::app_menu;
 use modules::{
-    agent, control, fs, git, history, lsp, net, pty, secrets, shell, vibrancy, workspace,
+    agent, control, dap, fs, git, history, lsp, net, pty, secrets, shell, vibrancy, workspace,
 };
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -239,6 +239,7 @@ pub fn run() {
         .manage(fs::watch::FsWatchState::default())
         .manage(history::HistoryState::default())
         .manage(lsp::LspState::default())
+        .manage(dap::DapState::default())
         .manage(fs::grep::ContentSearchState::default())
         .manage({
             let registry = workspace::WorkspaceRegistry::default();
@@ -283,6 +284,10 @@ pub fn run() {
             lsp::lsp_spawn,
             lsp::lsp_send,
             lsp::lsp_kill,
+            dap::dap_detect_netcoredbg,
+            dap::dap_spawn,
+            dap::dap_send,
+            dap::dap_kill,
             fs::search::fs_search,
             fs::search::fs_list_files,
             fs::grep::fs_grep,
@@ -352,6 +357,9 @@ pub fn run() {
                     #[cfg(target_os = "macos")]
                     modules::window_presentation::macos::uninstall();
                     if let Some(state) = app.try_state::<lsp::LspState>() {
+                        state.kill_all();
+                    }
+                    if let Some(state) = app.try_state::<dap::DapState>() {
                         state.kill_all();
                     }
                     if let Some(state) = app.try_state::<control::ControlState>() {

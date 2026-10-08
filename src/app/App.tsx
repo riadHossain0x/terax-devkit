@@ -56,6 +56,10 @@ import {
   useGlobalShortcuts,
 } from "@/modules/shortcuts";
 import {
+  DotnetDebugPanel,
+} from "@/modules/dotnet/debug/components/DotnetDebugPanel";
+import { DebugToolbar } from "@/modules/dotnet/debug/components/DebugToolbar";
+import {
   SIDEBAR_MAX_WIDTH,
   SIDEBAR_MIN_WIDTH,
   SidebarRail,
@@ -1502,6 +1506,8 @@ export default function App() {
                           onRunCommand={runTerminalCommand}
                           onOpenFile={(p) => handleOpenFile(p, true)}
                         />
+                      ) : sidebarView === "debug" ? (
+                        <DotnetDebugPanel />
                       ) : (
                         <SourceControlPanel
                           open
@@ -1620,6 +1626,8 @@ export default function App() {
           {switcherState && (
             <TabSwitcherHud tabs={spaceTabs} state={switcherState} />
           )}
+
+          <DebugToolbar />
 
           <CommandPalette
             open={commandPaletteOpen}
