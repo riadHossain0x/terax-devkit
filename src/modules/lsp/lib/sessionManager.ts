@@ -373,6 +373,14 @@ export async function lspFormatDocument(
   return formatDocumentAndWait(view);
 }
 
+export async function lspOpenDocumentSymbols(
+  view: EditorView,
+): Promise<"done" | "unsupported"> {
+  if (sessions.size === 0) return "unsupported";
+  const { openDocumentSymbols } = await import("./client");
+  return openDocumentSymbols(view);
+}
+
 // Open docs re-acquire automatically via the generation bump, so a stop
 // while still enabled is a restart.
 export async function restartPresetSessions(presetId: string): Promise<void> {

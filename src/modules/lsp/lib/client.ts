@@ -6,6 +6,8 @@ import {
   type Text,
 } from "@codemirror/state";
 import {
+  activateHover,
+  closeHoverTooltips,
   Decoration,
   type DecorationSet,
   EditorView,
@@ -23,14 +25,77 @@ import {
   locationsPanel,
   openLocationsPanel,
 } from "./locationsPanel";
+import { toast } from "sonner";
+import {
+  type DocumentSymbol,
+  flattenDocumentSymbols,
+  type SymbolInformation,
+} from "./symbols";
 import { fileUriToPath } from "./uri";
 
-export {
-  languageServerWithTransport,
+import {
+  languageServerWithTransport as baseLanguageServerWithTransport,
   SynchronizationMethod,
 } from "codemirror-languageserver";
+import { autocompletion } from "@codemirror/autocomplete";
+import { csharpSnippetCompletionSource } from "@/modules/editor/lib/snippets/csharpSnippets";
+import {
+  signatureHelpExtension,
+  type SignatureHelp,
+} from "./signatureHelp";
 
-type LspPos = { line: number; character: number };
+export { SynchronizationMethod };
+
+export function languageServerWithTransport(
+  options: Parameters<typeof baseLanguageServerWithTransport>[0],
+): Extension {
+  const exts = baseLanguageServerWithTransport(options);
+  if (!Array.isArray(exts) || exts.length < 3) return exts;
+
+  const isCSharp = options.languageId === "csharp" || options.languageId === "cs";
+
+  const customAc = autocompletion({
+    override: [
+      async (context) => {
+        const { state, pos, explicit, view } = context;
+        if (!view) return null;
+        const plugin = view.plugin(languageServerPlugin);
+        if (plugin == null) return null;
+        const line = state.doc.lineAt(pos);
+        let trigKind = 1;
+        let trigChar: string | undefined;
+        const prov = plugin.client.capabilities?.completionProvider;
+        const triggerChars =
+          prov?.triggerCharacters && prov.triggerCharacters.length > 0
+            ? prov.triggerCharacters
+            : isCSharp
+              ? [".", "'"]
+              : ["."];
+
+        const prevChar = pos > line.from ? line.text[pos - line.from - 1] : "";
+        if (!explicit && triggerChars.includes(prevChar)) {
+          trigKind = 2;
+          trigChar = prevChar;
+        }
+        if (!explicit && trigKind === 1 && !context.matchBefore(/\w+$/)) {
+          return null;
+        }
+        const lspPos = { line: line.number - 1, character: pos - line.from };
+        return await plugin.requestCompletion(context, lspPos, {
+          triggerCharacter: trigChar,
+          triggerKind: trigKind as 1 | 2 | 3,
+        });
+      },
+      ...(isCSharp ? [csharpSnippetCompletionSource] : []),
+    ],
+  });
+
+  const wrapped = [...exts];
+  wrapped[2] = customAc;
+  return wrapped;
+}
+
+export type LspPos = { line: number; character: number };
 type LspRange = { start: LspPos };
 
 type LspLocation = { uri: string; range: LspRange };
@@ -102,6 +167,50 @@ export async function formatDocumentAndWait(
       to: offsetOf(doc, e.range.end),
       insert: e.newText,
     })),
+  });
+  return "done";
+}
+
+export async function openDocumentSymbols(
+  view: EditorView,
+): Promise<"done" | "unsupported"> {
+  const plugin = view.plugin(languageServerPlugin);
+  if (!plugin) return "unsupported";
+  const client = plugin.client as TeraxLspClient;
+  if (!client.ready) return "unsupported";
+
+  let result: (DocumentSymbol | SymbolInformation)[] | null;
+  try {
+    result = await client.textDocumentDocumentSymbol({
+      textDocument: { uri: plugin.documentUri },
+    });
+  } catch {
+    return "unsupported";
+  }
+  if (!result || result.length === 0) return "unsupported";
+  const flat = flattenDocumentSymbols(result);
+  if (flat.length === 0) return "unsupported";
+
+  const items: LocationItem[] = flat.map((s) => ({
+    uri: plugin.documentUri,
+    line: s.line,
+    character: s.character,
+    label: s.label,
+  }));
+
+  openLocationsPanel(view, {
+    title: "Symbols in File",
+    items,
+    onPick: (item) => {
+      const targetLine = Math.min(item.line + 1, view.state.doc.lines);
+      const lineObj = view.state.doc.line(targetLine);
+      const target = Math.min(lineObj.from + item.character, lineObj.to);
+      view.dispatch({
+        selection: { anchor: target },
+        effects: EditorView.scrollIntoView(target, { y: "center" }),
+      });
+      view.focus();
+    },
   });
   return "done";
 }
@@ -342,10 +451,55 @@ export function lspInteractions(opts: {
     showResults(view, "References", result ?? []);
   };
 
+  const gotoSymbol = async (view: EditorView): Promise<void> => {
+    let result: (DocumentSymbol | SymbolInformation)[] | null;
+    try {
+      result = await opts.client.textDocumentDocumentSymbol({
+        textDocument: { uri: opts.documentUri },
+      });
+    } catch (err) {
+      console.error("[lsp] textDocumentDocumentSymbol failed:", err);
+      toast.error("Symbol lookup failed", {
+        description: String(err),
+      });
+      return;
+    }
+    if (!result || result.length === 0) {
+      toast.info("No symbols found in this file");
+      return;
+    }
+    const flat = flattenDocumentSymbols(result);
+    if (flat.length === 0) {
+      toast.info("No symbols found in this file");
+      return;
+    }
+
+    const items: LocationItem[] = flat.map((s) => ({
+      uri: opts.documentUri,
+      line: s.line,
+      character: s.character,
+      label: s.label,
+    }));
+
+    openLocationsPanel(view, {
+      title: "Symbols in File",
+      items,
+      onPick: (item) =>
+        navigate(view, {
+          uri: item.uri,
+          range: { start: { line: item.line, character: item.character } },
+        }),
+    });
+  };
+
   return [
     locationsPanel,
     hoverCodeHighlight,
     linkHover,
+    signatureHelpExtension({
+      client: opts.client,
+      documentUri: opts.documentUri,
+    }),
     keymap.of([
       {
         key: "F12",
@@ -376,6 +530,39 @@ export function lspInteractions(opts: {
           return true;
         },
       },
+      {
+        key: "Mod-Shift-o",
+        preventDefault: true,
+        run: (view) => {
+          void gotoSymbol(view);
+          return true;
+        },
+      },
+      {
+        key: "Mod-k Mod-i",
+        preventDefault: true,
+        run: (view) => {
+          const pos = view.state.selection.main.head;
+          activateHover(view, pos, 1);
+          return true;
+        },
+      },
+      {
+        key: "Mod-h",
+        preventDefault: true,
+        run: (view) => {
+          const pos = view.state.selection.main.head;
+          activateHover(view, pos, 1);
+          return true;
+        },
+      },
+      {
+        key: "Escape",
+        run: (view) => {
+          view.dispatch({ effects: closeHoverTooltips });
+          return false;
+        },
+      },
     ]),
     EditorView.domEventHandlers({
       mousedown: (event, view) => {
@@ -404,6 +591,8 @@ export class TeraxLspClient extends LanguageServerClient {
   // The lib omits the publishDiagnostics capability and servers like
   // typescript-language-server push no diagnostics without it. processId
   // enables the server-side parent watchdog.
+  // Dynamic registration for completion and definition is disabled so servers
+  // return direct static providers and trigger characters in the initialize response.
   protected override getInitializeParams() {
     const params = super.getInitializeParams();
     params.processId = TeraxLspClient.hostPid;
@@ -411,8 +600,44 @@ export class TeraxLspClient extends LanguageServerClient {
       ...params.capabilities.textDocument,
       publishDiagnostics: { relatedInformation: true },
       references: { dynamicRegistration: false },
+      definition: { dynamicRegistration: false },
+      synchronization: {
+        ...(params.capabilities.textDocument?.synchronization ?? {}),
+        dynamicRegistration: false,
+      },
+      completion: {
+        ...(params.capabilities.textDocument?.completion ?? {}),
+        dynamicRegistration: false,
+        completionItem: {
+          ...(params.capabilities.textDocument?.completion?.completionItem ?? {}),
+          snippetSupport: true,
+          commitCharactersSupport: true,
+          documentationFormat: ["markdown", "plaintext"],
+          resolveSupport: {
+            properties: ["detail", "documentation"],
+          },
+        },
+        contextSupport: true,
+      },
+      signatureHelp: {
+        dynamicRegistration: false,
+        signatureInformation: {
+          documentationFormat: ["markdown", "plaintext"],
+          parameterInformation: { labelOffsetSupport: true },
+          activeParameterSupport: true,
+        },
+      },
     };
     return params;
+  }
+
+  textDocumentSignatureHelp(params: {
+    textDocument: { uri: string };
+    position: LspPos;
+    context?: unknown;
+  }): Promise<SignatureHelp | null> {
+    return this.raw.request("textDocument/signatureHelp", params, 5_000) as
+      Promise<SignatureHelp | null>;
   }
 
   textDocumentReferences(params: {
@@ -422,6 +647,13 @@ export class TeraxLspClient extends LanguageServerClient {
   }): Promise<LspLocation[] | null> {
     return this.raw.request("textDocument/references", params, 10_000) as
       Promise<LspLocation[] | null>;
+  }
+
+  textDocumentDocumentSymbol(params: {
+    textDocument: { uri: string };
+  }): Promise<(DocumentSymbol | SymbolInformation)[] | null> {
+    return this.raw.request("textDocument/documentSymbol", params, 10_000) as
+      Promise<(DocumentSymbol | SymbolInformation)[] | null>;
   }
 
   textDocumentDidClose(uri: string): void {

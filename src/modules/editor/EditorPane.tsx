@@ -1,9 +1,17 @@
 import { endpointIdFromCompatModel } from "@/modules/ai/config";
 import { getCustomEndpointKey, getKey } from "@/modules/ai/lib/keyring";
-import { lspFormatDocument, useLspExtension } from "@/modules/lsp";
+import {
+  lspFormatDocument,
+  lspOpenDocumentSymbols,
+  useLspExtension,
+} from "@/modules/lsp";
 import { usePreferencesStore } from "@/modules/settings/preferences";
 import { onKeysChanged } from "@/modules/settings/store";
-import { acceptCompletion, startCompletion } from "@codemirror/autocomplete";
+import {
+  acceptCompletion,
+  autocompletion,
+  startCompletion,
+} from "@codemirror/autocomplete";
 import { redo, undo } from "@codemirror/commands";
 import {
   findNext,
@@ -43,6 +51,7 @@ import {
   indentExtension,
   languageCompartment,
   lspCompartment,
+  snippetCompartment,
   vimCompartment,
   wordWrapExtension,
   wrapCompartment,
@@ -55,6 +64,7 @@ import {
 } from "./lib/externalFormat";
 import { detectIndentUnit } from "./lib/indent";
 import { type LanguageResult, resolveLanguage } from "./lib/languageResolver";
+import { csharpSnippetCompletionSource } from "./lib/snippets/csharpSnippets";
 import { FORCE_READ_LIMIT, useDocument } from "./lib/useDocument";
 import { useEditorThemeExt } from "./lib/useEditorThemeExt";
 import { initVimGlobals, vimHandlersExtension } from "./lib/vim";
@@ -84,6 +94,8 @@ export type EditorPaneHandle = {
   triggerAiComplete: () => void;
   /** Open CodeMirror's completion popup. */
   triggerCodeComplete: () => void;
+  /** Open symbols in file outline navigator. */
+  gotoSymbol: () => Promise<void>;
 };
 
 type Props = {
@@ -333,6 +345,7 @@ export const EditorPane = memo(
         indentCompartment.of(DEFAULT_INDENT),
         languageCompartment.of([]),
         lspCompartment.of([]),
+        snippetCompartment.of([]),
         diagnosticsReporter(() => pathRef.current),
         // Before inlineCompletion so an open popup wins Tab over the ghost.
         Prec.highest(keymap.of([{ key: "Tab", run: acceptCompletion }])),
@@ -424,7 +437,10 @@ export const EditorPane = memo(
       const view = cmRef.current?.view;
       if (!view) return;
       view.dispatch({
-        effects: lspCompartment.reconfigure(lspExt ?? []),
+        effects: [
+          lspCompartment.reconfigure(lspExt ?? []),
+          ...(lspExt !== null ? [snippetCompartment.reconfigure([])] : []),
+        ],
       });
     }, [lspExt]);
 
@@ -464,10 +480,19 @@ export const EditorPane = memo(
         if (cancelled) return;
         if (result.id) languageRef.current = result.id;
         setLangId(result.id || ext);
+        const resolvedId = (result.id || ext || "").toLowerCase();
         const view = cmRef.current?.view;
         if (!view) return;
         view.dispatch({
-          effects: languageCompartment.reconfigure(result.ext),
+          effects: [
+            languageCompartment.reconfigure(result.ext),
+            snippetCompartment.reconfigure(
+              !lspActiveRef.current &&
+                (resolvedId === "cs" || resolvedId === "csharp")
+                ? autocompletion({ override: [csharpSnippetCompletionSource] })
+                : [],
+            ),
+          ],
         });
       });
       return () => {
@@ -546,6 +571,17 @@ export const EditorPane = memo(
           if (!view) return;
           view.focus();
           startCompletion(view);
+        },
+        gotoSymbol: async () => {
+          const view = cmRef.current?.view;
+          if (!view) return;
+          const res = await lspOpenDocumentSymbols(view);
+          if (res === "unsupported") {
+            toast.info("No symbols available", {
+              description:
+                "Language server is not running or file has no document symbols.",
+            });
+          }
         },
       }),
       [path, applyPendingFocus, applyPendingGoto],

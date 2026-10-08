@@ -9,10 +9,15 @@ import {
   ArrowRight01Icon,
   ArrowDown01Icon,
   MoreHorizontalIcon,
+  Search01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fileIconUrl } from "@/modules/explorer/lib/iconResolver";
+import {
+  ExplorerSearch,
+  type ExplorerSearchHandle,
+} from "@/modules/explorer/ExplorerSearch";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,6 +54,9 @@ export function SolutionExplorer({
 
   const [expandedProjects, setExpandedProjects] = useState<Record<string, boolean>>({});
   const [expandedDeps, setExpandedDeps] = useState<Record<string, boolean>>({});
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSearchActive, setIsSearchActive] = useState(false);
+  const searchRef = useRef<ExplorerSearchHandle>(null);
 
   const toggleProject = (path: string) => {
     setExpandedProjects((prev) => ({ ...prev, [path]: !prev[path] }));
@@ -121,6 +129,18 @@ export function SolutionExplorer({
         <div className="flex items-center gap-1">
           <button
             type="button"
+            title="Search files"
+            aria-label="Search files"
+            onClick={() => setIsSearchOpen((v) => !v)}
+            className={cn(
+              "flex h-6 w-6 items-center justify-center rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground",
+              isSearchOpen && "bg-foreground/10 text-foreground",
+            )}
+          >
+            <HugeiconsIcon icon={Search01Icon} size={13} strokeWidth={2} />
+          </button>
+          <button
+            type="button"
             title="Build Solution"
             onClick={() => onRunCommand("dotnet build")}
             className="flex h-6 w-6 items-center justify-center rounded hover:bg-foreground/10 text-muted-foreground hover:text-foreground"
@@ -163,8 +183,18 @@ export function SolutionExplorer({
         </div>
       </div>
 
+      <ExplorerSearch
+        ref={searchRef}
+        rootPath={workspaceRoot || ""}
+        onOpenFile={onOpenFile}
+        open={isSearchOpen}
+        onRequestClose={() => setIsSearchOpen(false)}
+        onActiveChange={setIsSearchActive}
+      />
+
       {/* Solution tree */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-1 py-1.5">
+      {!isSearchActive && (
+        <div className="flex-1 min-h-0 overflow-y-auto px-1 py-1.5">
         {solutions.length > 1 && (
           <div className="mb-2 px-2">
             <select
@@ -325,8 +355,9 @@ export function SolutionExplorer({
               </div>
             );
           })}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

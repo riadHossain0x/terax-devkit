@@ -50,7 +50,8 @@ export type ShortcutId =
   | "editor.redo"
   | "editor.save"
   | "editor.aiComplete"
-  | "editor.codeComplete";
+  | "editor.codeComplete"
+  | "editor.gotoSymbol";
 
 export type ShortcutGroup =
   | "General"
@@ -120,8 +121,7 @@ export const SHORTCUTS: Shortcut[] = [
     id: "tab.newPreview",
     label: "New web preview",
     group: "Tabs",
-    // Cmd/Ctrl+P now opens the command palette, so web preview moves here.
-    defaultBindings: [{ [MOD_PROP]: true, shift: true, key: "o" }],
+    defaultBindings: [{ [MOD_PROP]: true, shift: true, key: "v" }],
   },
   {
     id: "tab.newEditor",
@@ -389,6 +389,12 @@ export const SHORTCUTS: Shortcut[] = [
     label: "Trigger code completion",
     group: "Editor",
     defaultBindings: [{ ctrl: true, key: " " }],
+  },
+  {
+    id: "editor.gotoSymbol",
+    label: "Go to symbol in file",
+    group: "Editor",
+    defaultBindings: [{ [MOD_PROP]: true, shift: true, key: "o" }],
   },
 ];
 

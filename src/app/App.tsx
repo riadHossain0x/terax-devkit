@@ -970,6 +970,9 @@ export default function App() {
         editorRefs.current.get(activeId)?.triggerAiComplete(),
       "editor.codeComplete": () =>
         editorRefs.current.get(activeId)?.triggerCodeComplete(),
+      "editor.gotoSymbol": () => {
+        void editorRefs.current.get(activeId)?.gotoSymbol();
+      },
     }),
     [
       activeId,
@@ -1013,7 +1016,8 @@ export default function App() {
         id === "editor.redo" ||
         id === "editor.save" ||
         id === "editor.aiComplete" ||
-        id === "editor.codeComplete"
+        id === "editor.codeComplete" ||
+        id === "editor.gotoSymbol"
       ) {
         return activeTab?.kind !== "editor";
       }
@@ -1295,6 +1299,10 @@ export default function App() {
             newSpace: () => void handleNewSpace(),
             switchSpace: (id) => useSpaces.getState().setActive(id),
             runDotnetCommand: runTerminalCommand,
+            gotoSymbol:
+              activeTab?.kind === "editor"
+                ? () => void editorRefs.current.get(activeId)?.gotoSymbol()
+                : undefined,
           })
         : [],
     [

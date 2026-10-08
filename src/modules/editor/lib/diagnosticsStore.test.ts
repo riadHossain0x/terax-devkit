@@ -55,4 +55,49 @@ describe("diagnostics count store", () => {
 
     expect(useDiagnosticsStore.getState().byPath).toBe(before);
   });
+
+  it("stores and preserves diagnostic items per path", () => {
+    const items = [
+      {
+        message: "Syntax error: ';' expected",
+        severity: "error" as const,
+        from: 10,
+        to: 15,
+        line: 5,
+        col: 12,
+        source: "csharp-ls",
+      },
+    ];
+
+    useDiagnosticsStore.getState().report("/a.cs", {
+      errors: 1,
+      warnings: 0,
+      items,
+    });
+
+    expect(useDiagnosticsStore.getState().byPath["/a.cs"]).toEqual({
+      errors: 1,
+      warnings: 0,
+      items,
+    });
+
+    // Identical report should not update reference
+    const before = useDiagnosticsStore.getState().byPath;
+    useDiagnosticsStore.getState().report("/a.cs", {
+      errors: 1,
+      warnings: 0,
+      items: [
+        {
+          message: "Syntax error: ';' expected",
+          severity: "error",
+          from: 10,
+          to: 15,
+          line: 5,
+          col: 12,
+          source: "csharp-ls",
+        },
+      ],
+    });
+    expect(useDiagnosticsStore.getState().byPath).toBe(before);
+  });
 });

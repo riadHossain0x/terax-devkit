@@ -5,6 +5,7 @@ export { allServers, LSP_PRESETS, type LspPreset } from "./lib/presets";
 export { useLspRuntimeStore } from "./lib/runtimeStore";
 export {
   lspFormatDocument,
+  lspOpenDocumentSymbols,
   notifyDocumentSaved,
 } from "./lib/sessionManager";
 export { useLspExtension } from "./lib/useLspExtension";

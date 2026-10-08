@@ -49,21 +49,31 @@ function createPanel(view: EditorView, spec: PanelSpec): Panel {
   header.textContent = `${spec.title} (${spec.items.length})`;
   dom.appendChild(header);
 
+  let searchInput: HTMLInputElement | null = null;
+  let filteredItems = spec.items;
+  let active = 0;
+
   const list = document.createElement("ul");
   list.tabIndex = 0;
+
+  if (spec.items.length > 4) {
+    const searchWrap = document.createElement("div");
+    searchWrap.className = "cm-lsp-locations-search";
+    searchInput = document.createElement("input");
+    searchInput.type = "text";
+    searchInput.placeholder = "Filter symbols or locations...";
+    searchWrap.appendChild(searchInput);
+    dom.appendChild(searchWrap);
+  }
+
   dom.appendChild(list);
 
-  let active = 0;
-  const rows: HTMLElement[] = spec.items.map((item, i) => {
-    const li = document.createElement("li");
-    li.textContent = item.label;
-    li.addEventListener("mousedown", (e) => {
-      e.preventDefault();
-      pick(i);
-    });
-    list.appendChild(li);
-    return li;
-  });
+  let rows: HTMLElement[] = [];
+
+  const pick = (item: LocationItem) => {
+    closePanel(view);
+    spec.onPick(item);
+  };
 
   const renderActive = () => {
     rows.forEach((row, i) => {
@@ -72,21 +82,60 @@ function createPanel(view: EditorView, spec: PanelSpec): Panel {
     rows[active]?.scrollIntoView({ block: "nearest" });
   };
 
-  const pick = (i: number) => {
-    const item = spec.items[i];
-    closePanel(view);
-    spec.onPick(item);
+  const rebuildRows = () => {
+    list.replaceChildren();
+    rows = filteredItems.map((item) => {
+      const li = document.createElement("li");
+      li.textContent = item.label;
+      li.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        pick(item);
+      });
+      list.appendChild(li);
+      return li;
+    });
+    active = Math.min(active, Math.max(0, filteredItems.length - 1));
+    renderActive();
   };
+
+  if (searchInput) {
+    searchInput.addEventListener("input", () => {
+      const query = (searchInput?.value || "").toLowerCase().trim();
+      filteredItems = query
+        ? spec.items.filter((it) => it.label.toLowerCase().includes(query))
+        : spec.items;
+      active = 0;
+      rebuildRows();
+    });
+
+    searchInput.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown") {
+        active = Math.min(active + 1, filteredItems.length - 1);
+        renderActive();
+        e.preventDefault();
+      } else if (e.key === "ArrowUp") {
+        active = Math.max(active - 1, 0);
+        renderActive();
+        e.preventDefault();
+      } else if (e.key === "Enter") {
+        if (filteredItems[active]) pick(filteredItems[active]);
+        e.preventDefault();
+      } else if (e.key === "Escape") {
+        closePanel(view);
+        e.preventDefault();
+      }
+    });
+  }
 
   list.addEventListener("keydown", (e) => {
     if (e.key === "ArrowDown") {
-      active = Math.min(active + 1, spec.items.length - 1);
+      active = Math.min(active + 1, filteredItems.length - 1);
       renderActive();
     } else if (e.key === "ArrowUp") {
       active = Math.max(active - 1, 0);
       renderActive();
     } else if (e.key === "Enter") {
-      pick(active);
+      if (filteredItems[active]) pick(filteredItems[active]);
     } else if (e.key === "Escape") {
       closePanel(view);
     } else {
@@ -95,11 +144,15 @@ function createPanel(view: EditorView, spec: PanelSpec): Panel {
     e.preventDefault();
   });
 
-  renderActive();
+  rebuildRows();
   return {
     dom,
-    mount: () => list.focus(),
+    mount: () => {
+      if (searchInput) searchInput.focus();
+      else list.focus();
+    },
   };
 }
 
 export const locationsPanel = locationsField;
+

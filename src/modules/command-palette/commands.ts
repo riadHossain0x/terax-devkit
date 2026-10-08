@@ -66,6 +66,7 @@ export type CommandPaletteActionContext = {
   newSpace: () => void;
   switchSpace: (id: string) => void;
   runDotnetCommand?: (command: string) => void;
+  gotoSymbol?: () => void;
 };
 
 const noop = () => {};
@@ -304,6 +305,25 @@ export function createCommandItems(
       shortcutId: "search.focus",
       disabledReason: ctx.searchTarget ? undefined : "No searchable view",
       run: ctx.focusSearch,
+    },
+    {
+      id: "editor.gotoSymbol",
+      title: "Go to symbol in file",
+      group: "Search",
+      keywords: [
+        "symbol",
+        "outline",
+        "class",
+        "function",
+        "method",
+        "navigation",
+        "dotnet",
+        "c#",
+      ],
+      icon: SourceCodeIcon,
+      shortcutId: "editor.gotoSymbol",
+      disabledReason: ctx.gotoSymbol ? undefined : "No active editor",
+      run: () => ctx.gotoSymbol?.(),
     },
     {
       id: "explorer.search",

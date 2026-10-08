@@ -1,6 +1,20 @@
 import { create } from "zustand";
 
-export type DiagnosticCounts = { errors: number; warnings: number };
+export type DiagnosticItem = {
+  message: string;
+  severity: "error" | "warning" | "info";
+  from: number;
+  to: number;
+  line: number;
+  col: number;
+  source?: string;
+};
+
+export type DiagnosticCounts = {
+  errors: number;
+  warnings: number;
+  items?: DiagnosticItem[];
+};
 
 type State = {
   byPath: Record<string, DiagnosticCounts>;
@@ -16,7 +30,9 @@ export const useDiagnosticsStore = create<State>((set) => ({
         counts &&
         prev &&
         prev.errors === counts.errors &&
-        prev.warnings === counts.warnings
+        prev.warnings === counts.warnings &&
+        (prev.items?.length ?? 0) === (counts.items?.length ?? 0) &&
+        prev.items?.[0]?.message === counts.items?.[0]?.message
       ) {
         return s;
       }
